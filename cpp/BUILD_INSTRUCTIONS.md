@@ -2,7 +2,7 @@
 
 ## ビルドオプション
 
-### 1. コンソール版（軽量・推奨）
+### 1. コンソール版（
 ```cmd
 # ビルドのみ
 build_console.bat
@@ -32,11 +32,11 @@ build_gui.bat --installer
 - Visual Studio 2022
 - CMake 3.16以降
 
-### GUI版ビルド（追加）
+### GUI版ビルド
 - Qt6 (https://www.qt.io/download)
 - Qt VS Tools拡張機能（オプション）
 
-### インストーラー作成（追加）
+### インストーラー作成
 - NSIS (https://nsis.sourceforge.io/Download)
 
 ## トラブルシューティング

@@ -40,6 +40,13 @@ pom.xml.versionsBackup
 pom.xml.next
 release.properties
 
+# Java build outputs
+java/dist/
+java/dist-bombe/
+java/portable-dist/
+java/dictionary/
+java/javafx-runtime/
+
 # Gradle
 .gradle/
 build/
