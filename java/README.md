@@ -83,10 +83,10 @@ java -jar target/enigma-simulator-1.0.jar config.json
 
 ### バッチファイル（Windows）
 
-`run_enigma.bat`をダブルクリックするか、コマンドプロンプトから実行：
+`build-exe-without-maven.bat`をダブルクリックするか、コマンドプロンプトから実行：
 
 ```cmd
-run_enigma.bat
+build-exe-without-maven.bat
 ```
 
 ## 使用方法
