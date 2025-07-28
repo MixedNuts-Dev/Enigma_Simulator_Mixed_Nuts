@@ -1,0 +1,126 @@
+{
+  "settings": {
+    "crib": "WEATHER",
+    "cipher": "OZOMBOU",
+    "rotor1": "I",
+    "rotor2": "II",
+    "rotor3": "III",
+    "reflector": "B",
+    "testAllOrders": true
+  },
+  "results": [
+    {
+      "position": "ABC",
+      "rotors": "I-II-III",
+      "score": 100.0,
+      "matchRate": 1.0,
+      "plugboardPairs": 0,
+      "offset": 0,
+      "plugboard": []
+    },
+    {
+      "position": "XLG",
+      "rotors": "I-II-III",
+      "score": 53.14285714285714,
+      "matchRate": 0.5714285714285714,
+      "plugboardPairs": 2,
+      "offset": 0,
+      "plugboard": [
+        "BM",
+        "JO"
+      ]
+    },
+    {
+      "position": "QAT",
+      "rotors": "I-II-III",
+      "score": 51.14285714285714,
+      "matchRate": 0.5714285714285714,
+      "plugboardPairs": 3,
+      "offset": 0,
+      "plugboard": [
+        "BL",
+        "UV",
+        "KO"
+      ]
+    },
+    {
+      "position": "WBM",
+      "rotors": "I-II-III",
+      "score": 51.14285714285714,
+      "matchRate": 0.5714285714285714,
+      "plugboardPairs": 3,
+      "offset": 0,
+      "plugboard": [
+        "DO",
+        "HU",
+        "MZ"
+      ]
+    },
+    {
+      "position": "QIA",
+      "rotors": "I-III-II",
+      "score": 51.14285714285714,
+      "matchRate": 0.5714285714285714,
+      "plugboardPairs": 3,
+      "offset": 0,
+      "plugboard": [
+        "AU",
+        "BL",
+        "MO"
+      ]
+    },
+    {
+      "position": "XDE",
+      "rotors": "I-III-II",
+      "score": 51.14285714285714,
+      "matchRate": 0.5714285714285714,
+      "plugboardPairs": 3,
+      "offset": 0,
+      "plugboard": [
+        "BW",
+        "MU",
+        "NO"
+      ]
+    },
+    {
+      "position": "KFH",
+      "rotors": "II-I-III",
+      "score": 51.14285714285714,
+      "matchRate": 0.5714285714285714,
+      "plugboardPairs": 3,
+      "offset": 0,
+      "plugboard": [
+        "CU",
+        "MP",
+        "OX"
+      ]
+    },
+    {
+      "position": "KIN",
+      "rotors": "II-I-III",
+      "score": 51.14285714285714,
+      "matchRate": 0.5714285714285714,
+      "plugboardPairs": 3,
+      "offset": 0,
+      "plugboard": [
+        "BI",
+        "LM",
+        "OP"
+      ]
+    },
+    {
+      "position": "HBV",
+      "rotors": "III-I-II",
+      "score": 51.14285714285714,
+      "matchRate": 0.5714285714285714,
+      "plugboardPairs": 3,
+      "offset": 0,
+      "plugboard": [
+        "BE",
+        "IO",
+        "MR"
+      ]
+    }
+  ],
+  "totalResults": 9
+}

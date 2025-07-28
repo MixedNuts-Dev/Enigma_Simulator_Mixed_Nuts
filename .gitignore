@@ -1,0 +1,195 @@
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+python/build/
+python/dist/
+python/*.spec
+python/*.manifest
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+
+# =========================
+# Java
+# =========================
+# Compiled class files
+*.class
+
+# Package files
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+
+# Gradle
+.gradle/
+build/
+gradle-app.setting
+!gradle-wrapper.jar
+.gradletasknamecache
+
+# Eclipse
+.classpath
+.project
+.settings/
+bin/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# NetBeans
+nbproject/private/
+nbbuild/
+nbdist/
+.nb-gradle/
+
+# =========================
+# C++
+# =========================
+# Compiled object files
+*.o
+*.obj
+*.lo
+*.slo
+
+# Precompiled headers
+*.gch
+*.pch
+
+# Compiled dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Compiled static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Build directories
+cpp/build/
+cpp/out/
+cpp/cmake-build-*/
+cpp/Debug/
+cpp/Release/
+cpp/x64/
+cpp/x86/
+
+# CMake
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+CTestTestfile.cmake
+_deps/
+
+# Visual Studio
+.vs/
+*.vcxproj.user
+*.vcxproj.filters
+*.sln.docstates
+
+# =========================
+# IDE and OS
+# =========================
+# Visual Studio Code
+.vscode/
+
+# JetBrains IDEs
+.idea/
+
+# Vim
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# =========================
+# Logs and temporary files
+# =========================
+*.log
+*.tmp
+*.temp
+.cache/
+
+# =========================
+# Testing
+# =========================
+.tox/
+.coverage
+.coverage.*
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# =========================
+# Project specific
+# =========================
+# PyInstaller spec files (already built)
+python/build/
+python/dist/
+python/*.spec
+
+# Java build artifacts (keep jar files for distribution)
+java/target/
+!java/target/*.jar
+
+# C++ build directories
+cpp/build/
+cpp/out/
+
+# Claude AI settings (optional - remove if you want to track)
+.claude/
+
+# Temporary files
+*.bak
+*.tmp
+*.temp
+
+# Database files
+*.db
+*.sqlite
+
+# Config files with sensitive data
+config.local.json
+settings.local.json
