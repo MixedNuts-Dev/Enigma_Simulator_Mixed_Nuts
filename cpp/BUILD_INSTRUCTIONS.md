@@ -2,35 +2,29 @@
 
 ## ビルドオプション
 
-### 1. コンソール版のみ（推奨）
+### 1. コンソール版（軽量・推奨）
 ```cmd
-build.bat
+# ビルドのみ
+build_console.bat
+
+# ビルド + インストーラー作成
+build_console.bat --installer
 ```
 - Qt6不要
 - 軽量・高速
 - コマンドライン用途
 
-### 2. GUI版を含むビルド
+### 2. GUI版（Qt6必要）
 ```cmd
-build_with_gui.bat
+# ビルドのみ
+build_gui.bat
+
+# ビルド + インストーラー作成
+build_gui.bat --installer
 ```
 - Qt6が必要
 - GUIアプリケーション付き
 - より大きなファイルサイズ
-
-## インストーラー作成
-
-### コンソール版インストーラー
-```cmd
-build.bat
-build_installer.bat
-```
-
-### GUI版インストーラー
-```cmd
-build_with_gui.bat
-build_gui_installer.bat
-```
 
 ## 必要なツール
 
@@ -63,10 +57,23 @@ build_gui_installer.bat
 ## 出力ファイル
 
 ### コンソール版
-- 実行ファイル: `build\Release\EnigmaSimulatorCpp.exe`
-- インストーラー: `build\Enigma Simulator Cpp-1.0.0-win64.exe`
+- 実行ファイル: `build_console\Release\EnigmaSimulatorCpp.exe`
+- インストーラー/ZIP: `EnigmaSimulatorCpp_Console_v1.0.zip` または `.exe`
 
 ### GUI版
 - コンソール: `build_gui\Release\EnigmaSimulatorCpp.exe`
 - GUI: `build_gui\Release\EnigmaSimulatorCppGUI.exe`
-- インストーラー: `EnigmaSimulatorCppSetup.exe`
+- インストーラー/ZIP: `EnigmaSimulatorCpp_GUI_v1.0.zip` または `EnigmaSimulatorCpp_GUI_Setup.exe`
+
+## 使用例
+
+```cmd
+# コンソール版をビルドしてインストーラーも作成
+build_console.bat --installer
+
+# GUI版をビルドのみ（インストーラーなし）
+build_gui.bat
+
+# GUI版をビルドしてインストーラーも作成
+build_gui.bat --installer
+```

@@ -1,0 +1,10 @@
+^D:\DEVELOP\ENIGMA_DEMO\CPP\BUILD_GUI\CMAKEFILES\BBAABA3C4233EBD8AB041306A11CFD61\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SD:/develop/Enigma_demo/cpp -BD:/develop/Enigma_demo/cpp/build_gui --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file D:/develop/Enigma_demo/cpp/build_gui/EnigmaSimulatorCpp.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
