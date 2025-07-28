@@ -176,6 +176,7 @@ java/target/
 
 # C++ build directories
 cpp/build/
+cpp/build_*/
 cpp/out/
 
 # Claude AI settings (optional - remove if you want to track)
