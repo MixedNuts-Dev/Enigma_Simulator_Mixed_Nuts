@@ -5,6 +5,14 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 
+# Option for static runtime
+option(USE_STATIC_RUNTIME "Use static runtime libraries" OFF)
+
+# Set runtime library for MSVC
+if(MSVC AND USE_STATIC_RUNTIME)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
+
 # Find packages
 find_package(Threads REQUIRED)
 # Make Qt6 optional
