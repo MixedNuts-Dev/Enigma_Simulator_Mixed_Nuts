@@ -45,8 +45,6 @@ Enigma_demo/
 ```bash
 cd python
 python main.py
-# または
-python enigma.py
 ```
 
 ### Java版
