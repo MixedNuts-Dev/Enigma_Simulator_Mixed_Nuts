@@ -174,7 +174,7 @@ MITライセンス - 詳細は[LICENSE](LICENSE)ファイルを参照
 
 ## 作者
 
-[Your Name]
+[MixedNuts tukasa]
 
 ---
 
