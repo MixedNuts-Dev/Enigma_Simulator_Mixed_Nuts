@@ -39,7 +39,7 @@ if errorlevel 1 (
 
 jpackage ^
     --type %INSTALLER_TYPE% ^
-    --name "Bombe Simulator" ^
+    --name "Bombe Simulator Java" ^
     --app-version 1.0.0 ^
     --vendor "Enigma Project" ^
     --description "Bombe Attack Simulator for Enigma Machine" ^

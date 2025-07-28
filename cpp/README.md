@@ -89,17 +89,14 @@ make -j4
 ### Windows
 
 ```cmd
-# バッチファイルを使用
-run_enigma.bat
-
-# または直接実行
-build\Release\enigma_simulator.exe
+# 直接実行
+build\Release\EnigmaSimulatorCpp.exe
 ```
 
 ### Linux/Mac
 
 ```bash
-./build/enigma_simulator
+./build/EnigmaSimulatorCpp
 ```
 
 ## 使用方法
@@ -108,22 +105,22 @@ build\Release\enigma_simulator.exe
 
 ```bash
 # 基本的な暗号化
-enigma_simulator -e "HELLO WORLD"
+EnigmaSimulatorCpp -e "HELLO WORLD"
 
 # ローター設定を指定
-enigma_simulator -r I,V,III -p A,B,C -e "SECRET MESSAGE"
+EnigmaSimulatorCpp -r I,V,III -p A,B,C -e "SECRET MESSAGE"
 
 # 設定ファイルを使用
-enigma_simulator -c config.json
+EnigmaSimulatorCpp -c config.json
 
 # Bombe攻撃モード
-enigma_simulator -b --cipher "QMJIDO MZWZJFJR" --crib "HELLO WORLD"
+EnigmaSimulatorCpp -b --cipher "QMJIDO MZWZJFJR" --crib "HELLO WORLD"
 ```
 
 ### 対話モード
 
 ```bash
-enigma_simulator -i
+EnigmaSimulatorCpp -i
 ```
 
 対話モードでは以下のコマンドが使用可能：

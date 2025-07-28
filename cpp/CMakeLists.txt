@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(EnigmaSimulator)
+project(EnigmaSimulatorCpp VERSION 1.0.0 DESCRIPTION "Enigma Machine Simulator - C++ Version")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -59,30 +59,36 @@ set(GUI_HEADERS
 )
 
 # Enigma console application
-add_executable(enigma_console
+add_executable(enigma_console_cpp
     src/main_console.cpp
     ${CORE_SOURCES}
     ${CORE_HEADERS}
 )
 
-target_link_libraries(enigma_console 
+# Set output name
+set_target_properties(enigma_console_cpp PROPERTIES
+    OUTPUT_NAME "EnigmaSimulatorCpp"
+    RUNTIME_OUTPUT_NAME "EnigmaSimulatorCpp"
+)
+
+target_link_libraries(enigma_console_cpp 
     PRIVATE 
     Threads::Threads
     nlohmann_json::nlohmann_json
 )
 
 if(OpenMP_CXX_FOUND)
-    target_link_libraries(enigma_console PRIVATE OpenMP::OpenMP_CXX)
+    target_link_libraries(enigma_console_cpp PRIVATE OpenMP::OpenMP_CXX)
 endif()
 
 # Include directories
-target_include_directories(enigma_console PRIVATE src)
+target_include_directories(enigma_console_cpp PRIVATE src)
 
 # Enable compiler optimizations for console app
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    target_compile_options(enigma_console PRIVATE -O3)
+    target_compile_options(enigma_console_cpp PRIVATE -O3)
 elseif(MSVC)
-    target_compile_options(enigma_console PRIVATE 
+    target_compile_options(enigma_console_cpp PRIVATE 
         $<$<CONFIG:Debug>:/Od /RTC1>
         $<$<CONFIG:Release>:/O2>
         /Zc:__cplusplus
@@ -93,7 +99,7 @@ endif()
 # Build GUI application only if Qt6 is found
 if(Qt6_FOUND)
     # Enigma GUI application
-    add_executable(enigma_gui
+    add_executable(enigma_gui_cpp
         src/main_gui.cpp
         ${CORE_SOURCES}
         ${CORE_HEADERS}
@@ -101,7 +107,13 @@ if(Qt6_FOUND)
         ${GUI_HEADERS}
     )
 
-    target_link_libraries(enigma_gui 
+    # Set output name for GUI
+    set_target_properties(enigma_gui_cpp PROPERTIES
+        OUTPUT_NAME "EnigmaSimulatorCppGUI"
+        RUNTIME_OUTPUT_NAME "EnigmaSimulatorCppGUI"
+    )
+
+    target_link_libraries(enigma_gui_cpp 
         PRIVATE 
         Qt6::Core
         Qt6::Widgets
@@ -110,18 +122,18 @@ if(Qt6_FOUND)
     )
 
     if(OpenMP_CXX_FOUND)
-        target_link_libraries(enigma_gui PRIVATE OpenMP::OpenMP_CXX)
+        target_link_libraries(enigma_gui_cpp PRIVATE OpenMP::OpenMP_CXX)
     endif()
 
     # Include directories
-    target_include_directories(enigma_gui PRIVATE src)
+    target_include_directories(enigma_gui_cpp PRIVATE src)
 
     # Enable compiler optimizations
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-        target_compile_options(enigma_gui PRIVATE -O3)
+        target_compile_options(enigma_gui_cpp PRIVATE -O3)
     elseif(MSVC)
         # Use generator expressions to set different options for Debug and Release
-        target_compile_options(enigma_gui PRIVATE 
+        target_compile_options(enigma_gui_cpp PRIVATE 
             $<$<CONFIG:Debug>:/Od /RTC1>
             $<$<CONFIG:Release>:/O2>
             /Zc:__cplusplus 
@@ -132,7 +144,7 @@ if(Qt6_FOUND)
 
     # Set Windows subsystem for GUI app
     if(WIN32)
-        set_target_properties(enigma_gui PROPERTIES
+        set_target_properties(enigma_gui_cpp PROPERTIES
             WIN32_EXECUTABLE TRUE
         )
     endif()
@@ -141,3 +153,33 @@ if(Qt6_FOUND)
 else()
     message(STATUS "Qt6 not found - Only console application will be built")
 endif()
+
+# Installation settings
+install(TARGETS enigma_console_cpp
+    RUNTIME DESTINATION bin
+    COMPONENT runtime
+)
+
+if(Qt6_FOUND)
+    install(TARGETS enigma_gui_cpp
+        RUNTIME DESTINATION bin
+        COMPONENT runtime
+    )
+endif()
+
+# Set installation paths
+set(CMAKE_INSTALL_PREFIX "C:/Program Files/Enigma Simulator Cpp" CACHE PATH "Installation directory")
+
+# CPack settings for creating installers
+set(CPACK_GENERATOR "NSIS")
+set(CPACK_PACKAGE_NAME "Enigma Simulator Cpp")
+set(CPACK_PACKAGE_VENDOR "MixedNuts tukasa")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Enigma Machine Simulator - C++ Version")
+set(CPACK_PACKAGE_VERSION_MAJOR "1")
+set(CPACK_PACKAGE_VERSION_MINOR "0")
+set(CPACK_PACKAGE_VERSION_PATCH "0")
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "Enigma Simulator Cpp")
+set(CPACK_NSIS_DISPLAY_NAME "Enigma Simulator C++")
+set(CPACK_NSIS_MODIFY_PATH ON)
+
+include(CPack)
