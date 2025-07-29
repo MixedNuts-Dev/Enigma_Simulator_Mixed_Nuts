@@ -6,6 +6,7 @@
 #include <memory>
 #include <vector>
 #include <atomic>
+#include "../core/BombeAttack.h"
 
 QT_BEGIN_NAMESPACE
 class QLineEdit;
@@ -57,7 +58,7 @@ public:
 signals:
     void startAttack(const QString& crib, const QString& cipher,
                     const QStringList& rotors, const QString& reflector,
-                    bool testAllOrders);
+                    bool testAllOrders, bool searchWithoutPlugboard);
 
 private slots:
     void onStartAttackClicked();
@@ -84,6 +85,7 @@ private:
     QComboBox* rotor3Combo;
     QComboBox* reflectorCombo;
     QCheckBox* testAllOrdersCheck;
+    QCheckBox* searchWithoutPlugboardCheck;
     
     QTextEdit* logEdit;
     QListWidget* resultsList;
@@ -118,7 +120,7 @@ public:
 public slots:
     void doAttack(const QString& crib, const QString& cipher,
                   const QStringList& rotors, const QString& reflector,
-                  bool testAllOrders);
+                  bool testAllOrders, bool searchWithoutPlugboard);
 
 signals:
     void progress(const QString& message);
@@ -127,14 +129,6 @@ signals:
 
 private:
     std::atomic<bool> stopFlag{false};
-    
-    void testPosition(const std::vector<int>& positions,
-                     const std::vector<std::string>& rotorTypes,
-                     const std::string& reflectorType,
-                     const std::string& crib,
-                     const std::string& cipher,
-                     int offset,
-                     std::vector<BombeResult>& results);
 };
 
 #endif // BOMBE_WINDOW_H

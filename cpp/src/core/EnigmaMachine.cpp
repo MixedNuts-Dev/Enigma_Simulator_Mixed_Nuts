@@ -55,6 +55,50 @@ char EnigmaMachine::encryptChar(char c) {
     return c;
 }
 
+char EnigmaMachine::encryptCharNoStep(char c) const {
+    // Pass through plugboard
+    c = plugboard_->swap(c);
+    
+    // Pass through rotors (right to left)
+    for (const auto& rotor : rotors_) {
+        c = rotor->encryptForward(c);
+    }
+    
+    // Pass through reflector
+    c = reflector_->reflect(c);
+    
+    // Pass back through rotors (left to right)
+    for (auto it = rotors_.rbegin(); it != rotors_.rend(); ++it) {
+        c = (*it)->encryptBackward(c);
+    }
+    
+    // Pass through plugboard again
+    c = plugboard_->swap(c);
+    
+    return c;
+}
+
+char EnigmaMachine::encryptCharNoPlugboard(char c) const {
+    // NO plugboard - direct to rotors
+    
+    // Pass through rotors (right to left)
+    for (const auto& rotor : rotors_) {
+        c = rotor->encryptForward(c);
+    }
+    
+    // Pass through reflector
+    c = reflector_->reflect(c);
+    
+    // Pass back through rotors (left to right)
+    for (auto it = rotors_.rbegin(); it != rotors_.rend(); ++it) {
+        c = (*it)->encryptBackward(c);
+    }
+    
+    // NO plugboard on return
+    
+    return c;
+}
+
 void EnigmaMachine::stepRotors() {
     // Enigma double-stepping mechanism
     bool middleAtNotch = false;

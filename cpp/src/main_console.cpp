@@ -22,7 +22,8 @@ void printUsage() {
     std::cout << "  2. save - Save current configuration to JSON\n";
     std::cout << "  3. load - Load configuration from JSON\n";
     std::cout << "  4. bombe - Run Bombe attack (simplified)\n";
-    std::cout << "  5. exit - Exit the program\n\n";
+    std::cout << "  5. test - Run encryption test\n";
+    std::cout << "  6. exit - Exit the program\n\n";
 }
 
 class EnigmaConsole {
@@ -328,6 +329,64 @@ public:
             std::cout << "Error loading Bombe result: " << e.what() << "\n";
         }
     }
+    
+    void runTest() {
+        std::cout << "\n=== Enigma Test ===\n";
+        
+        // Test 1: No plugboard
+        std::cout << "Test 1: Rotors I-II-III, Reflector B, No plugboard, Position AAA\n";
+        rotor1Type = "I";
+        rotor2Type = "II";
+        rotor3Type = "III";
+        reflectorType = "B";
+        rotor1Pos = 0;
+        rotor2Pos = 0;
+        rotor3Pos = 0;
+        plugboardPairs.clear();
+        setupEnigma();
+        
+        std::string plaintext = "HELLOWORLD";
+        std::string encrypted1 = enigma->encrypt(plaintext);
+        std::cout << "HELLOWORLD -> " << encrypted1 << "\n\n";
+        
+        // Test 2: With plugboard HA LB WC
+        std::cout << "Test 2: Rotors I-II-III, Reflector B, Plugboard HA LB WC, Position AAA\n";
+        plugboardPairs = {"HA", "LB", "WC"};
+        setupEnigma();
+        
+        std::string encrypted2 = enigma->encrypt(plaintext);
+        std::cout << "HELLOWORLD -> " << encrypted2 << "\n";
+        std::cout << "Expected:     FFPGZGLFUM\n";
+        std::cout << "Match: " << (encrypted2 == "FFPGZGLFUM" ? "YES" : "NO") << "\n\n";
+        
+        // Test 3: Try different rotor orders
+        std::cout << "Test 3: Testing rotor order variations with plugboard...\n";
+        std::vector<std::vector<std::string>> orders = {
+            {"I", "II", "III"},
+            {"III", "II", "I"},
+            {"II", "I", "III"},
+            {"III", "I", "II"},
+            {"I", "III", "II"},
+            {"II", "III", "I"}
+        };
+        
+        for (const auto& order : orders) {
+            rotor1Type = order[0];
+            rotor2Type = order[1];
+            rotor3Type = order[2];
+            rotor1Pos = 0;
+            rotor2Pos = 0;
+            rotor3Pos = 0;
+            setupEnigma();
+            
+            std::string result = enigma->encrypt(plaintext);
+            std::cout << order[0] << "-" << order[1] << "-" << order[2] << ": " << result;
+            if (result == "FFPGZGLFUM") {
+                std::cout << " <-- MATCH!";
+            }
+            std::cout << "\n";
+        }
+    }
 
 private:
     std::string getPlugboardString() const {
@@ -359,7 +418,9 @@ int main() {
             console.loadConfig();
         } else if (command == "4" || command == "bombe") {
             console.loadBombeResult();
-        } else if (command == "5" || command == "exit") {
+        } else if (command == "5" || command == "test") {
+            console.runTest();
+        } else if (command == "6" || command == "exit") {
             break;
         } else if (command == "config") {
             console.configure();

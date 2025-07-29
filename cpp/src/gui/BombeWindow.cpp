@@ -4,6 +4,7 @@
 #include "../core/Reflector.h"
 #include "../core/Plugboard.h"
 #include "../core/RotorConfig.h"
+#include "../core/BombeAttack.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -105,6 +106,9 @@ void BombeWindow::setupUi() {
     
     testAllOrdersCheck = new QCheckBox("Test all rotor orders (全ローター順を試す)", this);
     mainLayout->addWidget(testAllOrdersCheck);
+    
+    searchWithoutPlugboardCheck = new QCheckBox("Search without plugboard (プラグボードなしで検索)", this);
+    mainLayout->addWidget(searchWithoutPlugboardCheck);
     
     // Control buttons
     auto* buttonLayout = new QHBoxLayout();
@@ -214,7 +218,7 @@ void BombeWindow::onStartAttackClicked() {
            << rotor3Combo->currentText();
     
     emit startAttack(crib, cipher, rotors, reflectorCombo->currentText(), 
-                     testAllOrdersCheck->isChecked());
+                     testAllOrdersCheck->isChecked(), searchWithoutPlugboardCheck->isChecked());
 }
 
 void BombeWindow::onStopAttackClicked() {
@@ -239,6 +243,7 @@ void BombeWindow::onSaveSettingsClicked() {
     settings.setValue("rotor3", rotor3Combo->currentText());
     settings.setValue("reflector", reflectorCombo->currentText());
     settings.setValue("testAllOrders", testAllOrdersCheck->isChecked());
+    settings.setValue("searchWithoutPlugboard", searchWithoutPlugboardCheck->isChecked());
     
     QMessageBox::information(this, "Success", "設定が保存されました");
 }
@@ -267,6 +272,7 @@ void BombeWindow::onLoadSettingsClicked() {
     if (settings.contains("rotor3")) rotor3Combo->setCurrentText(settings["rotor3"].toString());
     if (settings.contains("reflector")) reflectorCombo->setCurrentText(settings["reflector"].toString());
     if (settings.contains("testAllOrders")) testAllOrdersCheck->setChecked(settings["testAllOrders"].toBool());
+    if (settings.contains("searchWithoutPlugboard")) searchWithoutPlugboardCheck->setChecked(settings["searchWithoutPlugboard"].toBool());
     
     QMessageBox::information(this, "Success", "設定が読み込まれました");
 }
@@ -293,6 +299,7 @@ void BombeWindow::onExportResultsClicked() {
     settings["rotor3"] = rotor3Combo->currentText();
     settings["reflector"] = reflectorCombo->currentText();
     settings["testAllOrders"] = testAllOrdersCheck->isChecked();
+    settings["searchWithoutPlugboard"] = searchWithoutPlugboardCheck->isChecked();
     root["settings"] = settings;
     
     // Results
@@ -389,12 +396,23 @@ void BombeWindow::showResults(const std::vector<BombeResult>& results) {
     resultsList->clear();
     for (size_t i = 0; i < std::min(size_t(50), results.size()); ++i) {
         const auto& result = results[i];
-        QString item = QString("#%1: %2 (%3) - Score: %4, Match: %5%")
+        QString plugboardStr = "None";
+        if (!result.plugboard.empty()) {
+            QStringList pairs;
+            for (const auto& [a, b] : result.plugboard) {
+                pairs << QString("%1%2").arg(a).arg(b);
+            }
+            plugboardStr = pairs.join(" ");
+        }
+        
+        QString item = QString("#%1: %2 (%3) - Score: %4, Match: %5%, Plugboard: %6, Offset: %7")
             .arg(i + 1)
             .arg(QString::fromStdString(result.getPositionString()))
             .arg(QString::fromStdString(result.getRotorString()))
             .arg(result.score, 0, 'f', 1)
-            .arg(result.matchRate * 100, 0, 'f', 1);
+            .arg(result.matchRate * 100, 0, 'f', 1)
+            .arg(plugboardStr)
+            .arg(result.offset);
         resultsList->addItem(item);
     }
     
@@ -408,7 +426,7 @@ BombeWorker::BombeWorker() : stopFlag(false) {}
 
 void BombeWorker::doAttack(const QString& crib, const QString& cipher,
                            const QStringList& rotors, const QString& reflector,
-                           bool testAllOrders) {
+                           bool testAllOrders, bool searchWithoutPlugboard) {
     emit progress("=== Starting Bombe Attack ===");
     emit progress(QString("Crib: %1").arg(crib));
     emit progress(QString("Cipher: %1").arg(cipher));
@@ -422,69 +440,41 @@ void BombeWorker::doAttack(const QString& crib, const QString& cipher,
         rotorTypes.push_back(r.toStdString());
     }
     
-    std::vector<BombeResult> results;
+    // Use BombeAttack class for historically accurate implementation
+    BombeAttack bombeAttack(cribStr, cipherStr, rotorTypes, reflectorStr, testAllOrders, searchWithoutPlugboard);
     
-    // Generate rotor permutations if needed
-    std::vector<std::vector<std::string>> rotorOrders;
-    if (testAllOrders) {
-        // Generate all permutations
-        std::vector<std::string> types = rotorTypes;
-        std::sort(types.begin(), types.end());
-        do {
-            rotorOrders.push_back(types);
-        } while (std::next_permutation(types.begin(), types.end()));
-    } else {
-        rotorOrders.push_back(rotorTypes);
-    }
-    
-    int maxOffset = std::max(0, static_cast<int>(cipherStr.length() - cribStr.length() + 1));
-    int totalPositions = 26 * 26 * 26 * rotorOrders.size() * maxOffset;
-    
-    emit progress(QString("Total combinations: %1 (positions: %2, orders: %3, offsets: %4)")
-        .arg(totalPositions)
-        .arg(26*26*26)
-        .arg(rotorOrders.size())
-        .arg(maxOffset));
-    
-    int tested = 0;
-    
-    // Test all combinations
-    for (const auto& rotorOrder : rotorOrders) {
-        for (int offset = 0; offset < maxOffset; ++offset) {
-            for (int pos1 = 0; pos1 < 26; ++pos1) {
-                for (int pos2 = 0; pos2 < 26; ++pos2) {
-                    for (int pos3 = 0; pos3 < 26; ++pos3) {
-                        if (stopFlag) {
-                            emit finished(results);
-                            return;
-                        }
-                        
-                        std::vector<int> positions = {pos1, pos2, pos3};
-                        testPosition(positions, rotorOrder, reflectorStr, 
-                                   cribStr, cipherStr, offset, results);
-                        
-                        tested++;
-                        if (tested % 5000 == 0) {
-                            double progress = (tested / static_cast<double>(totalPositions)) * 100;
-                            emit this->progress(QString("Progress: %1/%2 (%3%)")
-                                .arg(tested)
-                                .arg(totalPositions)
-                                .arg(progress, 0, 'f', 1));
-                        }
-                    }
-                }
-            }
+    // Progress callback
+    auto progressCallback = [this](const std::string& msg) {
+        if (!stopFlag) {
+            emit progress(QString::fromStdString(msg));
         }
+    };
+    
+    // Run the attack
+    progressCallback("Starting Bombe attack with proper plugboard deduction...");
+    auto candidateResults = bombeAttack.attack(progressCallback);
+    
+    if (stopFlag) {
+        bombeAttack.stop();
+        emit finished(std::vector<BombeResult>{});
+        return;
     }
     
-    // Sort results by score
-    std::sort(results.begin(), results.end(), 
-        [](const BombeResult& a, const BombeResult& b) {
-            return a.score > b.score;
-        });
+    // Convert CandidateResult to BombeResult
+    std::vector<BombeResult> results;
+    for (const auto& candidate : candidateResults) {
+        BombeResult result;
+        result.score = candidate.score;
+        result.positions = candidate.positions;
+        result.rotorOrder = candidate.rotorOrder;
+        result.plugboard = candidate.plugboard;
+        result.matchRate = candidate.matchRate;
+        result.plugboardPairs = candidate.plugboardPairs;
+        result.offset = candidate.offset;
+        results.push_back(result);
+    }
     
-    emit progress(QString("\nTested %1 positions").arg(tested));
-    emit progress(QString("Found %1 possible settings").arg(results.size()));
+    emit progress(QString("\nFound %1 possible settings").arg(results.size()));
     
     // Show top 10
     for (size_t i = 0; i < std::min(size_t(10), results.size()); ++i) {
@@ -510,78 +500,4 @@ void BombeWorker::doAttack(const QString& crib, const QString& cipher,
     emit finished(results);
 }
 
-void BombeWorker::testPosition(const std::vector<int>& positions,
-                               const std::vector<std::string>& rotorTypes,
-                               const std::string& reflectorType,
-                               const std::string& crib,
-                               const std::string& cipher,
-                               int offset,
-                               std::vector<BombeResult>& results) {
-    // Check if crib fits at this offset
-    if (offset + crib.length() > cipher.length()) {
-        return;
-    }
-    
-    std::string cipherPart = cipher.substr(offset, crib.length());
-    
-    // Create Enigma machine
-    auto rotors = std::vector<std::unique_ptr<Rotor>>();
-    for (const auto& type : rotorTypes) {
-        auto& def = enigma::ROTOR_DEFINITIONS.at(type);
-        rotors.push_back(std::make_unique<Rotor>(def.wiring, def.getFirstNotch()));
-    }
-    
-    auto& refDef = enigma::REFLECTOR_DEFINITIONS.at(reflectorType);
-    auto reflector = std::make_unique<Reflector>(refDef.wiring);
-    auto plugboard = std::make_unique<Plugboard>();
-    
-    auto enigma = std::make_unique<EnigmaMachine>(
-        std::move(rotors), std::move(reflector), std::move(plugboard)
-    );
-    
-    // Set positions
-    enigma->setRotorPositions(positions);
-    
-    // Advance rotors to offset position
-    for (int i = 0; i < offset; ++i) {
-        enigma->stepRotors();
-    }
-    
-    // Test encryption
-    std::string testResult = enigma->encrypt(crib);
-    
-    // Check for exact match
-    if (testResult == cipherPart) {
-        BombeResult result;
-        result.score = 100.0;
-        result.positions = positions;
-        result.rotorOrder = rotorTypes;
-        result.matchRate = 1.0;
-        result.plugboardPairs = 0;
-        result.offset = offset;
-        results.push_back(result);
-        return;
-    }
-    
-    // Check for partial matches (would need plugboard)
-    int matches = 0;
-    for (size_t i = 0; i < crib.length(); ++i) {
-        if (testResult[i] == cipherPart[i]) {
-            matches++;
-        }
-    }
-    
-    double matchRate = matches / static_cast<double>(crib.length());
-    if (matchRate >= 0.5) {
-        // This would be a candidate for plugboard analysis
-        // For now, just record it with lower score
-        BombeResult result;
-        result.score = matchRate * 100 - 10; // Penalty for needing plugboard
-        result.positions = positions;
-        result.rotorOrder = rotorTypes;
-        result.matchRate = matchRate;
-        result.plugboardPairs = 0; // Would need to calculate
-        result.offset = offset;
-        results.push_back(result);
-    }
-}
+// testPosition method removed - now using BombeAttack class

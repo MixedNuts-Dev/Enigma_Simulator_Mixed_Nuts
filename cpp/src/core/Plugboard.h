@@ -9,6 +9,7 @@ class Plugboard {
 public:
     Plugboard();
     explicit Plugboard(const std::vector<std::string>& pairs);
+    explicit Plugboard(const std::vector<std::pair<char, char>>& pairs);
     
     char swap(char c) const;
     bool addPair(char a, char b);

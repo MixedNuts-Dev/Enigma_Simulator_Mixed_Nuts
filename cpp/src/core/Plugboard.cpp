@@ -11,6 +11,12 @@ Plugboard::Plugboard(const std::vector<std::string>& pairs) {
     }
 }
 
+Plugboard::Plugboard(const std::vector<std::pair<char, char>>& pairs) {
+    for (const auto& pair : pairs) {
+        addPair(pair.first, pair.second);
+    }
+}
+
 char Plugboard::swap(char c) const {
     auto it = mapping_.find(c);
     return (it != mapping_.end()) ? it->second : c;

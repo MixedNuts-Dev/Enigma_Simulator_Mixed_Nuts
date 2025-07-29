@@ -19,6 +19,8 @@ public:
     
     // For fast Bombe attack
     char encryptChar(char c);
+    char encryptCharNoStep(char c) const;  // Encrypt without stepping rotors
+    char encryptCharNoPlugboard(char c) const;  // Encrypt without plugboard and without stepping
     void stepRotors();
     void resetToPosition(const std::vector<int>& positions);
     

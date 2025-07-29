@@ -15,7 +15,12 @@
   
 - **Bombe攻撃ツール**
   - 既知平文攻撃（クリブアタック）
+  - 電気経路追跡による制約伝播アルゴリズム
+  - プラグボード配線の自動推定
   - OpenMPによる並列処理
+  - 全ローター順序の探索オプション
+  - プラグボードなし探索モード
+  - 部分一致検出（50%以上のマッチ）
   - 高速な総当たり攻撃
 
 ## 必要要件
@@ -30,17 +35,19 @@
 ```
 cpp/
 ├── src/
-│   ├── enigma.h             # エニグマクラス定義
-│   ├── enigma.cpp           # エニグマ実装
-│   ├── rotor.h              # ローターヘッダー
-│   ├── rotor.cpp            # ローター実装
-│   ├── reflector.h          # リフレクターヘッダー
-│   ├── reflector.cpp        # リフレクター実装
-│   ├── plugboard.h          # プラグボードヘッダー
-│   ├── plugboard.cpp        # プラグボード実装
-│   ├── bombe.h              # Bombeヘッダー
-│   ├── bombe.cpp            # Bombe実装
-│   └── main.cpp             # メインプログラム
+│   ├── core/                # コア暗号化機能
+│   │   ├── EnigmaMachine.h  # エニグマクラス定義
+│   │   ├── EnigmaMachine.cpp # エニグマ実装
+│   │   ├── Rotor.h          # ローターヘッダー
+│   │   ├── Rotor.cpp        # ローター実装
+│   │   ├── Reflector.h      # リフレクターヘッダー
+│   │   ├── Reflector.cpp    # リフレクター実装
+│   │   ├── Plugboard.h      # プラグボードヘッダー
+│   │   ├── Plugboard.cpp    # プラグボード実装
+│   │   ├── RotorConfig.h    # ローター設定
+│   │   ├── BombeAttack.h    # Bombe攻撃ヘッダー
+│   │   └── BombeAttack.cpp  # Bombe攻撃実装
+│   └── main_console.cpp     # メインプログラム
 ├── build/                   # ビルド出力ディレクトリ
 ├── CMakeLists.txt           # CMake設定
 ├── build.bat                # Windowsビルドスクリプト
@@ -115,6 +122,12 @@ EnigmaSimulatorCpp -c config.json
 
 # Bombe攻撃モード
 EnigmaSimulatorCpp -b --cipher "QMJIDO MZWZJFJR" --crib "HELLO WORLD"
+
+# プラグボードなしでのBombe攻撃
+EnigmaSimulatorCpp -b --cipher "QMJIDO MZWZJFJR" --crib "HELLO WORLD" --no-plugboard
+
+# 全ローター順序をテスト
+EnigmaSimulatorCpp -b --cipher "QMJIDO MZWZJFJR" --crib "HELLO WORLD" --all-rotors
 ```
 
 ### 対話モード
@@ -215,6 +228,11 @@ cmake -DBUILD_STATIC=ON ..
 
 ## 技術詳細
 
+- **Bombeアルゴリズム**:
+  - 制約伝播による効率的なプラグボード推定
+  - 電気経路追跡シミュレーション
+  - 双方向マッピングの競合検出
+  - `hasPlugboardConflict_`フラグによる状態管理
 - **言語標準**: C++11
 - **並列処理**: OpenMP
 - **ビルドシステム**: CMake
@@ -232,7 +250,7 @@ MITライセンス
 
 ## 作者
 
-[Your Name]
+[Mixed Nuts tukasa]
 
 ## 参考文献
 

@@ -38,6 +38,7 @@ set(CORE_SOURCES
     src/core/Reflector.cpp
     src/core/Plugboard.cpp
     src/core/EnigmaMachine.cpp
+    src/core/BombeAttack.cpp
 )
 
 set(CORE_HEADERS
@@ -46,6 +47,7 @@ set(CORE_HEADERS
     src/core/Plugboard.h
     src/core/EnigmaMachine.h
     src/core/RotorConfig.h
+    src/core/BombeAttack.h
 )
 
 set(GUI_SOURCES
