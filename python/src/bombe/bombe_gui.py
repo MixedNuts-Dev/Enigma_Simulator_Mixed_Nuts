@@ -218,7 +218,12 @@ class BombeGUI:
             return
         
         # ローター設定を取得
-        rotor_types = [var.get() for var in self.rotor_vars]
+        if self.test_all_orders_var.get():
+            # Test all rotor ordersがチェックされている場合、すべてのローターを渡す
+            rotor_types = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII"]
+        else:
+            # 選択されたローターのみを使用
+            rotor_types = [var.get() for var in self.rotor_vars]
         reflector_type = self.reflector_var.get()
         
         # UIを更新

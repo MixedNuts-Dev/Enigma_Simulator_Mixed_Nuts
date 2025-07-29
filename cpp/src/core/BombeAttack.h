@@ -7,7 +7,17 @@
 #include <future>
 #include <map>
 #include <set>
+#include <thread>
+#include <chrono>
 #include "DiagonalBoard.h"
+
+#ifdef USE_OPENCL
+#include <CL/cl.h>
+#endif
+
+#ifdef USE_CUDA
+#include <cuda_runtime.h>
+#endif
 
 struct CandidateResult {
     double score;
@@ -35,6 +45,8 @@ public:
                 bool testAllOrders = false,
                 bool searchWithoutPlugboard = false);
     
+    ~BombeAttack();
+    
     std::vector<CandidateResult> attack(
         std::function<void(const std::string&)> progressCallback = nullptr);
     
@@ -54,6 +66,16 @@ private:
     bool hasPlugboardConflict_ = false;
     std::function<void(const std::string&)> progressCallback_;
     DiagonalBoard diagonalBoard_;
+    
+    // CPU負荷管理
+    std::atomic<double> cpuUsage_{0.0};
+    std::atomic<int> activeThreads_{0};
+    int maxThreads_;
+    std::chrono::milliseconds threadDelay_{0};
+    
+    // GPU処理用
+    bool useGPU_ = false;
+    void* gpuContext_ = nullptr;
     
     void testPosition(const std::vector<int>& positions,
                      const std::vector<std::string>& rotorOrder,
@@ -77,4 +99,41 @@ private:
     
     std::vector<std::vector<std::string>> generatePermutations(
         const std::vector<std::string>& items);
+    
+    // 史実のBombeアルゴリズム用の追加メソッド
+    struct MenuLink {
+        int position;     // クリブ内の位置
+        char fromChar;    // 変換元の文字
+        char toChar;      // 変換先の文字
+    };
+    
+    std::vector<MenuLink> createMenu();
+    
+    std::map<char, std::set<char>> findLoops(const std::vector<MenuLink>& menu);
+    
+    bool testPlugboardHypothesis(
+        const std::vector<int>& positions,
+        const std::vector<std::string>& rotorOrder,
+        int offset,
+        char assumedStecker,
+        std::map<char, char>& deducedSteckers);
+    
+    void propagateStecker(
+        char letter,
+        char stecker,
+        const std::vector<MenuLink>& menu,
+        std::map<char, char>& steckerboard,
+        bool& contradiction);
+    
+    // CPU負荷管理
+    double getCPUUsage();
+    void adjustThreadCount();
+    void throttleIfNeeded();
+    
+    // GPU処理
+    bool initializeGPU();
+    void cleanupGPU();
+    bool processOnGPU(const std::vector<std::vector<int>>& positionBatch,
+                      const std::vector<std::string>& rotorOrder,
+                      int offset);
 };

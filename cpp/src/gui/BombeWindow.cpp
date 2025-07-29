@@ -213,9 +213,15 @@ void BombeWindow::onStartAttackClicked() {
     
     // Start attack
     QStringList rotors;
-    rotors << rotor1Combo->currentText()
-           << rotor2Combo->currentText()
-           << rotor3Combo->currentText();
+    if (testAllOrdersCheck->isChecked()) {
+        // Test all rotor ordersがチェックされている場合、すべてのローターを渡す
+        rotors << "I" << "II" << "III" << "IV" << "V" << "VI" << "VII" << "VIII";
+    } else {
+        // 選択されたローターのみを使用
+        rotors << rotor1Combo->currentText()
+               << rotor2Combo->currentText()
+               << rotor3Combo->currentText();
+    }
     
     emit startAttack(crib, cipher, rotors, reflectorCombo->currentText(), 
                      testAllOrdersCheck->isChecked(), searchWithoutPlugboardCheck->isChecked());
@@ -430,6 +436,13 @@ void BombeWorker::doAttack(const QString& crib, const QString& cipher,
     emit progress("=== Starting Bombe Attack ===");
     emit progress(QString("Crib: %1").arg(crib));
     emit progress(QString("Cipher: %1").arg(cipher));
+    
+    if (testAllOrders) {
+        emit progress(QString("Test all rotor orders: ON (testing all combinations of %1 rotors)").arg(rotors.size()));
+    } else {
+        emit progress(QString("Test all rotor orders: OFF (testing only %1-%2-%3)")
+            .arg(rotors[0]).arg(rotors[1]).arg(rotors[2]));
+    }
     
     std::string cribStr = crib.toStdString();
     std::string cipherStr = cipher.toStdString();
