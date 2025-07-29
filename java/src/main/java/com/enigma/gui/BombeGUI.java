@@ -197,11 +197,18 @@ public class BombeGUI extends Application {
         progressBar.setProgress(ProgressIndicator.INDETERMINATE_PROGRESS);
         candidatesList.getItems().clear();
         
-        List<String> rotorTypes = Arrays.asList(
-            rotor1Combo.getValue(),
-            rotor2Combo.getValue(),
-            rotor3Combo.getValue()
-        );
+        List<String> rotorTypes;
+        if (testAllOrdersCheck.isSelected()) {
+            // Test all rotor ordersがチェックされている場合、すべてのローターを渡す
+            rotorTypes = Arrays.asList("I", "II", "III", "IV", "V", "VI", "VII", "VIII");
+        } else {
+            // 選択されたローターのみを使用
+            rotorTypes = Arrays.asList(
+                rotor1Combo.getValue(),
+                rotor2Combo.getValue(),
+                rotor3Combo.getValue()
+            );
+        }
         
         Task<List<CandidateResult>> task = new Task<>() {
             @Override
