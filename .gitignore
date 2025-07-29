@@ -46,6 +46,7 @@ java/dist-bombe/
 java/portable-dist/
 java/dictionary/
 java/javafx-runtime/
+java/javafx-jars/
 
 # Gradle
 .gradle/
