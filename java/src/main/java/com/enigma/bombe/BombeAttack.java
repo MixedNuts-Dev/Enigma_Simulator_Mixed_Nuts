@@ -329,7 +329,6 @@ public class BombeAttack {
         Map<Character, Character> requiredMappings = new HashMap<>();
         
         for (int i = 0; i < cribText.length(); i++) {
-            char plainChar = cribText.charAt(i);
             char cipherChar = cipherPart.charAt(i);
             char noPlugChar = noPlugboardResult.charAt(i);
             
@@ -375,6 +374,11 @@ public class BombeAttack {
                         used.add(entry.getKey());
                         used.add(entry.getValue());
                     }
+                }
+                
+                // プラグボード仮説をdiagonal boardでテスト
+                if (diagonalBoard.hasContradiction(testWiring)) {
+                    continue;  // 矛盾があればスキップ
                 }
             
                 // 検証
@@ -469,19 +473,6 @@ public class BombeAttack {
         }
         
         return result;
-    }
-    
-    private Map<Character, Character> createPlugboardMap(String[] pairs) {
-        Map<Character, Character> map = new HashMap<>();
-        for (String pair : pairs) {
-            if (pair.length() == 2) {
-                char c1 = pair.charAt(0);
-                char c2 = pair.charAt(1);
-                map.put(c1, c2);
-                map.put(c2, c1);
-            }
-        }
-        return map;
     }
     
     private void advanceRotorsToOffset(EnigmaMachine enigma, int offset) {

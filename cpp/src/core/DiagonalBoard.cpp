@@ -1,6 +1,28 @@
 #include "DiagonalBoard.h"
 #include <algorithm>
 #include <functional>
+#include <fstream>
+#include <mutex>
+#include <string>
+#include <sstream>
+
+// デバッグログ用（簡易実装）
+static void writeDebugLog(const std::string& message) {
+    // デバッグビルドの場合のみログ出力
+#ifdef _DEBUG
+    static std::ofstream logFile("diagonal_board_debug.log", std::ios::app);
+    static std::mutex logMutex;
+    
+    std::lock_guard<std::mutex> lock(logMutex);
+    if (logFile.is_open()) {
+        logFile << message << std::endl;
+        logFile.flush();
+    }
+#else
+    // リリースビルドでは何もしない（パフォーマンスのため）
+    (void)message;
+#endif
+}
 
 DiagonalBoard::DiagonalBoard() : connections_(26) {
 }
@@ -26,6 +48,11 @@ bool DiagonalBoard::hasSelfStecker(const std::map<char, char>& wiring) {
 }
 
 bool DiagonalBoard::hasContradiction(const std::map<char, char>& wiring) {
+    // 入力が空の場合は矛盾なし
+    if (wiring.empty()) {
+        return false;
+    }
+    
     // 接続をクリア
     for (auto& conn : connections_) {
         conn.clear();
@@ -33,8 +60,16 @@ bool DiagonalBoard::hasContradiction(const std::map<char, char>& wiring) {
     
     // 配線から接続グラフを構築
     for (const auto& pair : wiring) {
+        if (pair.first < 'A' || pair.first > 'Z' || pair.second < 'A' || pair.second > 'Z') {
+            return true;  // 無効な文字
+        }
+        
         int from = pair.first - 'A';
         int to = pair.second - 'A';
+        
+        if (from < 0 || from >= 26 || to < 0 || to >= 26) {
+            return true;  // インデックスエラー
+        }
         
         // 双方向の接続を追加
         connections_[from].insert(pair.second);
@@ -116,13 +151,29 @@ bool DiagonalBoard::checkTransitiveClosure(const std::map<char, char>& wiring) {
         char current = pair.second;
         int steps = 1;
         
-        while (wiring.find(current) != wiring.end() && steps < 3) {
-            current = wiring.at(current);
-            steps++;
+        // 訪問済みをトラックして無限ループを防ぐ
+        std::set<char> visited;
+        visited.insert(start);
+        visited.insert(current);
+        
+        while (steps < 26) {  // 最大26文字まで
+            auto it = wiring.find(current);
+            if (it == wiring.end()) {
+                break;  // マッピングが見つからない場合は終了
+            }
             
-            if (current == start && steps > 2) {
+            char next = it->second;
+            if (next == start && steps > 2) {
                 return true;  // 矛盾：3文字以上の循環
             }
+            
+            if (visited.find(next) != visited.end() && next != start) {
+                break;  // 既に訪問済み（start以外）
+            }
+            
+            visited.insert(next);
+            current = next;
+            steps++;
         }
     }
     

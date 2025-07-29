@@ -13,6 +13,12 @@
 #include <string>
 #include <cstdint>
 #include <omp.h>
+#include <fstream>
+#include <iostream>
+#include <sstream>
+#include <ctime>
+#include <mutex>
+#include <iomanip>
 
 #ifdef _WIN32
 #define NOMINMAX  // Windowsのmin/maxマクロを無効化
@@ -27,6 +33,23 @@
 #ifdef USE_OPENCL
 #include <CL/cl.h>
 #endif
+
+// デバッグログファイル
+static std::ofstream debugLog;
+static std::mutex debugLogMutex;
+
+void writeDebugLog(const std::string& message) {
+    std::lock_guard<std::mutex> lock(debugLogMutex);
+    if (!debugLog.is_open()) {
+        debugLog.open("bombe_debug.log", std::ios::app);
+        debugLog << "\n=== New Debug Session ===" << std::endl;
+        auto t = std::time(nullptr);
+        auto tm = *std::localtime(&t);
+        debugLog << "Time: " << std::put_time(&tm, "%d-%m-%Y %H:%M:%S") << std::endl;
+    }
+    debugLog << message << std::endl;
+    debugLog.flush();
+}
 
 BombeAttack::BombeAttack(const std::string& cribText, 
                          const std::string& cipherText,
@@ -51,6 +74,12 @@ BombeAttack::BombeAttack(const std::string& cribText,
 
 BombeAttack::~BombeAttack() {
     cleanupGPU();
+    
+    // ログファイルを閉じる
+    std::lock_guard<std::mutex> lock(debugLogMutex);
+    if (debugLog.is_open()) {
+        debugLog.close();
+    }
 }
 
 std::vector<CandidateResult> BombeAttack::attack(
@@ -119,7 +148,7 @@ std::vector<CandidateResult> BombeAttack::attack(
     
     std::atomic<int> processedCount(0);
     
-    #pragma omp parallel for schedule(dynamic, 10) num_threads(numThreads)
+    #pragma omp parallel for schedule(dynamic, 1) num_threads(numThreads)
     for (int orderIdx = 0; orderIdx < static_cast<int>(rotorOrders.size()); orderIdx++) {
         for (int offset = 0; offset < maxOffset; offset++) {
             for (int pos1 = 0; pos1 < 26; pos1++) {
@@ -294,6 +323,74 @@ std::vector<std::pair<char, char>> BombeAttack::deducePlugboardWiring(
         return {};
     }
     
+    // プラグボードなしでの暗号化結果を保存
+    std::string noPlugboardResult = testResult;
+    
+    // プラグボードの推定：実際のBombeアルゴリズム
+    // まず簡単な方法を試す
+    std::map<char, char> requiredMappings;
+    
+    for (size_t i = 0; i < cribText_.length(); i++) {
+        char cipherChar = cipherPart[i];
+        char noPlugChar = noPlugboardResult[i];
+        
+        // プラグボードが必要な変換を記録
+        if (noPlugChar != cipherChar) {
+            // noPlugCharをcipherCharに変換する必要がある
+            if (!propagateConstraints(requiredMappings, noPlugChar, cipherChar)) {
+                hasPlugboardConflict_ = true;
+                return {};
+            }
+        }
+    }
+    
+    // 推定されたマッピングから有効なプラグボード設定を生成
+    if (!requiredMappings.empty()) {
+        // 検証
+        auto verifyRotors = std::vector<std::unique_ptr<Rotor>>();
+        for (const auto& type : rotorOrder) {
+            auto& def = enigma::ROTOR_DEFINITIONS.at(type);
+            verifyRotors.push_back(std::make_unique<Rotor>(def.wiring, def.getFirstNotch()));
+        }
+        auto& verifyRefDef = enigma::REFLECTOR_DEFINITIONS.at(reflectorType_);
+        auto verifyReflector = std::make_unique<Reflector>(verifyRefDef.wiring);
+        
+        std::vector<std::pair<char, char>> plugboardPairs;
+        std::set<char> used;
+        
+        for (const auto& pair : requiredMappings) {
+            if (used.find(pair.first) == used.end() && 
+                used.find(pair.second) == used.end() &&
+                pair.first != pair.second) {
+                if (pair.first < pair.second) {
+                    plugboardPairs.push_back({pair.first, pair.second});
+                } else {
+                    plugboardPairs.push_back({pair.second, pair.first});
+                }
+                used.insert(pair.first);
+                used.insert(pair.second);
+            }
+        }
+        
+        std::vector<std::string> pbStrings;
+        for (const auto& pair : plugboardPairs) {
+            pbStrings.push_back(std::string(1, pair.first) + std::string(1, pair.second));
+        }
+        auto verifyPlugboard = std::make_unique<Plugboard>(pbStrings);
+        
+        EnigmaMachine verifyMachine(std::move(verifyRotors), std::move(verifyReflector), std::move(verifyPlugboard));
+        verifyMachine.setRotorPositions(positions);
+        
+        for (int i = 0; i < offset; i++) {
+            verifyMachine.stepRotors();
+        }
+        
+        std::string verifyResult = verifyMachine.encrypt(cribText_);
+        if (verifyResult == cipherPart) {
+            return plugboardPairs;
+        }
+    }
+    
     // 史実のBombeアルゴリズムを使用
     // 各文字（A-Z）を仮定のステッカーとしてテスト
     for (char assumedStecker = 'A'; assumedStecker <= 'Z'; assumedStecker++) {
@@ -323,13 +420,30 @@ std::vector<std::pair<char, char>> BombeAttack::deducePlugboardWiring(
                 }
             }
             
+            // プラグボード仮説をdiagonal boardでテスト
+            bool hasContradiction = false;
+            try {
+                // 各スレッドごとにDiagonalBoardインスタンスを作成
+                DiagonalBoard localDiagonalBoard;
+                hasContradiction = localDiagonalBoard.hasContradiction(deducedSteckers);
+            } catch (const std::exception& e) {
+                hasContradiction = true;
+            } catch (...) {
+                hasContradiction = true;
+            }
+            
+            if (hasContradiction) {
+                continue;  // 矛盾があればスキップ
+            }
+            
             // 検証
             auto verifyRotors = std::vector<std::unique_ptr<Rotor>>();
             for (const auto& type : rotorOrder) {
                 auto& def = enigma::ROTOR_DEFINITIONS.at(type);
                 verifyRotors.push_back(std::make_unique<Rotor>(def.wiring, def.getFirstNotch()));
             }
-            auto verifyReflector = std::make_unique<Reflector>(refDef.wiring);
+            auto& verifyRefDef = enigma::REFLECTOR_DEFINITIONS.at(reflectorType_);
+            auto verifyReflector = std::make_unique<Reflector>(verifyRefDef.wiring);
             
             std::vector<std::string> pbStrings;
             for (const auto& pair : plugboardPairs) {
@@ -511,19 +625,21 @@ bool BombeAttack::testPlugboardHypothesis(
     // Bombeの各ドラムユニットをシミュレート
     std::vector<std::pair<char, char>> implications;  // 推定されたステッカーペア
     
+    // エニグママシンを一度だけ作成
+    auto testReflector = std::make_unique<Reflector>(refDef.wiring);
+    auto testPlugboard = std::make_unique<Plugboard>(std::vector<std::string>{});
+    
+    // ローターをコピー
+    auto testRotors = std::vector<std::unique_ptr<Rotor>>();
+    for (const auto& type : rotorOrder) {
+        auto& def = enigma::ROTOR_DEFINITIONS.at(type);
+        testRotors.push_back(std::make_unique<Rotor>(def.wiring, def.getFirstNotch()));
+    }
+    
+    EnigmaMachine testMachine(std::move(testRotors), std::move(testReflector), std::move(testPlugboard));
+    
     for (size_t i = 0; i < cribText_.length(); i++) {
-        // この位置のエニグマを設定
-        auto testReflector = std::make_unique<Reflector>(refDef.wiring);
-        auto testPlugboard = std::make_unique<Plugboard>(std::vector<std::string>{});
-        
-        // ローターをコピー
-        auto testRotors = std::vector<std::unique_ptr<Rotor>>();
-        for (const auto& type : rotorOrder) {
-            auto& def = enigma::ROTOR_DEFINITIONS.at(type);
-            testRotors.push_back(std::make_unique<Rotor>(def.wiring, def.getFirstNotch()));
-        }
-        
-        EnigmaMachine testMachine(std::move(testRotors), std::move(testReflector), std::move(testPlugboard));
+        // ローター位置を設定
         testMachine.setRotorPositions(positions);
         
         // この位置まで進める
@@ -539,7 +655,14 @@ bool BombeAttack::testPlugboardHypothesis(
         }
         
         // エニグマを通す（ステップなし）
-        char outputBeforePlugboard = testMachine.encryptCharNoStep(steckeredInput);
+        char outputBeforePlugboard;
+        try {
+            outputBeforePlugboard = testMachine.encryptCharNoStep(steckeredInput);
+        } catch (const std::exception& e) {
+            return false;
+        } catch (...) {
+            return false;
+        }
         
         // 出力側のステッカーを推定
         char expectedOutput = cipherPart[i];
