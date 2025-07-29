@@ -69,8 +69,10 @@ cd cpp
 # ビルド
 mkdir build && cd build
 cmake .. && make
-# 実行
-./enigma_simulator
+# 実行（CLI版）
+./enigma_console_cpp
+# 実行（GUI版 - Qt6が必要）
+./enigma_gui_cpp
 # またはバッチファイル（Windows）
 run_enigma.bat
 ```
@@ -79,7 +81,7 @@ run_enigma.bat
 
 | 機能 | Python | Java | C++ |
 |------|--------|------|-----|
-| GUI | ✅ Tkinter | ✅ JavaFX | ❌ CLI only |
+| GUI | ✅ Tkinter | ✅ JavaFX | ✅ Qt6 |
 | Bombe攻撃 | ✅ | ✅ | ✅ |
 | 並列処理 | ✅ multiprocessing | ✅ ExecutorService | ✅ OpenMP |
 | 設定ファイル | ✅ JSON | ✅ JSON | ✅ JSON |
