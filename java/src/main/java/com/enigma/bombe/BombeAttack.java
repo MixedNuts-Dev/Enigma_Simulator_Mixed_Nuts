@@ -376,49 +376,6 @@ public class BombeAttack {
             }
         }
         
-        // 制約伝播が失敗した場合、一般的な設定をテスト
-        List<Map<Character, Character>> commonPlugboards = new ArrayList<>();
-        commonPlugboards.add(createPlugboardMap(new String[]{"HA", "LB", "WC"})); // 既知のテストケース
-        commonPlugboards.add(createPlugboardMap(new String[]{"AR", "GK", "OX"}));
-        commonPlugboards.add(createPlugboardMap(new String[]{"BJ", "CH", "PI"}));
-        commonPlugboards.add(createPlugboardMap(new String[]{"DF", "HJ", "LX"}));
-        commonPlugboards.add(createPlugboardMap(new String[]{"EW", "KL", "UQ"}));
-        
-        for (Map<Character, Character> testPlugboard : commonPlugboards) {
-            // テストマシンを作成
-            List<Rotor> testRotors = new ArrayList<>();
-            for (String type : rotorOrder) {
-                RotorConfig.RotorDefinition def = RotorConfig.ROTOR_DEFINITIONS.get(type);
-                testRotors.add(new Rotor(def.wiring, def.getFirstNotch()));
-            }
-            
-            Reflector testReflector = new Reflector(RotorConfig.REFLECTOR_DEFINITIONS.get(reflectorType));
-            
-            // マップをPlugboard用の文字列配列に変換
-            List<String> pbPairs = new ArrayList<>();
-            Set<Character> used = new HashSet<>();
-            for (Map.Entry<Character, Character> entry : testPlugboard.entrySet()) {
-                if (!used.contains(entry.getKey()) && !used.contains(entry.getValue())) {
-                    used.add(entry.getKey());
-                    used.add(entry.getValue());
-                    pbPairs.add("" + entry.getKey() + entry.getValue());
-                }
-            }
-            
-            EnigmaMachine testMachine = new EnigmaMachine(testRotors, testReflector, 
-                new Plugboard(pbPairs.toArray(new String[0])));
-            testMachine.setRotorPositions(positions);
-            
-            // オフセットまで進める
-            advanceRotorsToOffset(testMachine, offset);
-            
-            String verifyResult = testMachine.encrypt(cribText);
-            if (verifyResult.equals(cipherPart)) {
-                // 動作するプラグボードを発見！
-                return testPlugboard;
-            }
-        }
-        
         hasPlugboardConflict = true;
         return new HashMap<>();
     }
