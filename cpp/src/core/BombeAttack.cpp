@@ -93,10 +93,16 @@ void BombeAttack::testPosition(const std::vector<int>& positions,
     // 推定されたプラグボードでエニグマを作成
     auto rotors = std::vector<std::unique_ptr<Rotor>>();
     for (const auto& type : rotorOrder) {
+        if (enigma::ROTOR_DEFINITIONS.find(type) == enigma::ROTOR_DEFINITIONS.end()) {
+            return;  // 無効なローター
+        }
         auto& def = enigma::ROTOR_DEFINITIONS.at(type);
         rotors.push_back(std::make_unique<Rotor>(def.wiring, def.getFirstNotch()));
     }
     
+    if (enigma::REFLECTOR_DEFINITIONS.find(reflectorType_) == enigma::REFLECTOR_DEFINITIONS.end()) {
+        return;  // 無効なリフレクター
+    }
     auto& refDef = enigma::REFLECTOR_DEFINITIONS.at(reflectorType_);
     auto reflector = std::make_unique<Reflector>(refDef.wiring);
     
@@ -127,11 +133,6 @@ void BombeAttack::testPosition(const std::vector<int>& positions,
         std::lock_guard<std::mutex> lock(resultsMutex_);
         results_.push_back(result);
         
-        // デバッグ: 完全一致を発見
-        if (progressCallback_ && positions[0] == 0 && positions[1] == 0 && positions[2] == 0) {
-            std::string msg = "FOUND EXACT MATCH at AAA with " + std::to_string(plugboardHypothesis.size()) + " plugboard pairs";
-            progressCallback_(msg);
-        }
     } else if (!hasPlugboardConflict_ && plugboardHypothesis.empty()) {
         // プラグボードが推定されない場合の部分一致をチェック
         int matches = 0;
@@ -169,10 +170,18 @@ std::vector<std::pair<char, char>> BombeAttack::deducePlugboardWiring(
     // まずプラグボードなしでエニグマを作成
     auto rotors = std::vector<std::unique_ptr<Rotor>>();
     for (const auto& type : rotorOrder) {
+        // ローターが存在するかチェック
+        if (enigma::ROTOR_DEFINITIONS.find(type) == enigma::ROTOR_DEFINITIONS.end()) {
+            return {};  // 無効なローター
+        }
         auto& def = enigma::ROTOR_DEFINITIONS.at(type);
         rotors.push_back(std::make_unique<Rotor>(def.wiring, def.getFirstNotch()));
     }
     
+    // リフレクターが存在するかチェック
+    if (enigma::REFLECTOR_DEFINITIONS.find(reflectorType_) == enigma::REFLECTOR_DEFINITIONS.end()) {
+        return {};  // 無効なリフレクター
+    }
     auto& refDef = enigma::REFLECTOR_DEFINITIONS.at(reflectorType_);
     auto reflector = std::make_unique<Reflector>(refDef.wiring);
     auto plugboard = std::make_unique<Plugboard>(std::vector<std::string>{});
@@ -188,21 +197,62 @@ std::vector<std::pair<char, char>> BombeAttack::deducePlugboardWiring(
     // まずプラグボードなしでテスト
     std::string testResult = enigma.encrypt(cribText_);
     if (testResult == cipherPart) {
-        return {};
+        return {};  // プラグボードなしで一致
     }
     
     if (searchWithoutPlugboard_) {
         return {};
     }
     
-    // プラグボードなしでエニグマを通る経路を追跡
-    std::vector<char> pathChars = traceThroughEnigma(positions, rotorOrder, offset, cribText_);
+    // プラグボードなしでの暗号化結果を保存
+    std::string noPlugboardResult = testResult;
     
-    // すべての可能なプラグボード仮説を試す
+    // プラグボードの推定：実際のBombeアルゴリズム
+    // 各位置でクリブ文字と暗号文字の対応を確認
+    std::map<char, char> requiredMappings;
+    
+    for (size_t i = 0; i < cribText_.length(); i++) {
+        char plainChar = cribText_[i];
+        char cipherChar = cipherPart[i];
+        char noPlugChar = noPlugboardResult[i];
+        
+        // プラグボードが必要な変換を記録
+        // plain -> X -> noPlugChar -> Y -> cipher
+        // つまり、plainはXに、YはcipherCharにマップされる必要がある
+        
+        // まず、プラグボードなしでの出力が暗号文と異なる場合
+        if (noPlugChar != cipherChar) {
+            // noPlugCharをcipherCharに変換する必要がある
+            if (!propagateConstraints(requiredMappings, noPlugChar, cipherChar)) {
+                hasPlugboardConflict_ = true;
+                return {};
+            }
+        }
+    }
+    
+    // 推定されたマッピングから有効なプラグボード設定を生成
+    if (!requiredMappings.empty()) {
+        std::vector<std::pair<char, char>> plugboardPairs;
+        std::set<char> used;
+        
+        for (const auto& pair : requiredMappings) {
+            if (used.find(pair.first) == used.end() && 
+                used.find(pair.second) == used.end() &&
+                pair.first < pair.second) {
+                plugboardPairs.push_back({pair.first, pair.second});
+                used.insert(pair.first);
+                used.insert(pair.second);
+            }
+        }
+        
+        return plugboardPairs;
+    }
+    
+    // 制約伝播による推定が失敗した場合、別のアプローチを試す
     for (char startLetter = 'A'; startLetter <= 'Z'; startLetter++) {
-        // 最初の文字が自己ステッカーの場合はスキップ
-        if (cribText_.length() == 0 || (cribText_[0] == cipherPart[0])) {
-            continue;
+        // エニグマは文字を自分自身に暗号化しない
+        if (startLetter == cribText_[0]) {
+            continue;  // 自己ステッカーはスキップ
         }
         
         std::map<char, char> testWiring;
@@ -219,6 +269,7 @@ std::vector<std::pair<char, char>> BombeAttack::deducePlugboardWiring(
             char plainChar = cribText_[i];
             char cipherChar = cipherPart[i];
             
+            
             // プラグボード後の文字を取得（マッピングされている場合）
             char afterPlugboard = plainChar;
             if (testWiring.find(plainChar) != testWiring.end()) {
@@ -228,17 +279,24 @@ std::vector<std::pair<char, char>> BombeAttack::deducePlugboardWiring(
             // この位置で単一文字をエニグマを通して追跡
             auto testRotors = std::vector<std::unique_ptr<Rotor>>();
             for (const auto& type : rotorOrder) {
+                if (enigma::ROTOR_DEFINITIONS.find(type) == enigma::ROTOR_DEFINITIONS.end()) {
+                    conflict = true;
+                    break;
+                }
                 auto& def = enigma::ROTOR_DEFINITIONS.at(type);
                 testRotors.push_back(std::make_unique<Rotor>(def.wiring, def.getFirstNotch()));
             }
-            auto testReflector = std::make_unique<Reflector>(refDef.wiring);
+            if (conflict) break;
+            
+            auto& innerRefDef = enigma::REFLECTOR_DEFINITIONS.at(reflectorType_);
+            auto testReflector = std::make_unique<Reflector>(innerRefDef.wiring);
             auto emptyPlugboard = std::make_unique<Plugboard>(std::vector<std::string>{});
             
             EnigmaMachine testMachine(std::move(testRotors), std::move(testReflector), std::move(emptyPlugboard));
             testMachine.setRotorPositions(positions);
             
             // この文字の位置まで進める
-            for (int j = 0; j < offset + i; j++) {
+            for (int j = 0; j < offset + static_cast<int>(i); j++) {
                 testMachine.stepRotors();
             }
             
@@ -255,6 +313,10 @@ std::vector<std::pair<char, char>> BombeAttack::deducePlugboardWiring(
         }
         
         if (!conflict && testWiring.size() <= 20) { // 最大10ペア（20マッピング）
+            // プラグボード仮説をdiagonal boardでテスト
+            if (diagonalBoard_.hasContradiction(testWiring)) {
+                continue;  // 矛盾があればスキップ
+            }
             // プラグボードペアを抽出
             std::vector<std::pair<char, char>> plugboardPairs;
             std::set<char> used;
@@ -296,41 +358,6 @@ std::vector<std::pair<char, char>> BombeAttack::deducePlugboardWiring(
         }
     }
     
-    // 制約伝播が失敗した場合、一般的な設定をテスト
-    std::vector<std::vector<std::pair<char, char>>> commonPlugboards = {
-        {{'H', 'A'}, {'L', 'B'}, {'W', 'C'}}, // 既知のテストケース
-        {{'A', 'R'}, {'G', 'K'}, {'O', 'X'}},
-        {{'B', 'J'}, {'C', 'H'}, {'P', 'I'}},
-        {{'D', 'F'}, {'H', 'J'}, {'L', 'X'}},
-        {{'E', 'W'}, {'K', 'L'}, {'U', 'Q'}}
-    };
-    
-    for (const auto& testPairs : commonPlugboards) {
-        auto testRotors = std::vector<std::unique_ptr<Rotor>>();
-        for (const auto& type : rotorOrder) {
-            auto& def = enigma::ROTOR_DEFINITIONS.at(type);
-            testRotors.push_back(std::make_unique<Rotor>(def.wiring, def.getFirstNotch()));
-        }
-        auto testReflector = std::make_unique<Reflector>(refDef.wiring);
-        
-        std::vector<std::string> pbStrings;
-        for (const auto& pair : testPairs) {
-            pbStrings.push_back(std::string(1, pair.first) + std::string(1, pair.second));
-        }
-        auto testPlugboard = std::make_unique<Plugboard>(pbStrings);
-        
-        EnigmaMachine testMachine(std::move(testRotors), std::move(testReflector), std::move(testPlugboard));
-        testMachine.setRotorPositions(positions);
-        
-        for (int i = 0; i < offset; i++) {
-            testMachine.stepRotors();
-        }
-        
-        std::string verifyResult = testMachine.encrypt(cribText_);
-        if (verifyResult == cipherPart) {
-            return testPairs;
-        }
-    }
     
     hasPlugboardConflict_ = true;
     return {};
@@ -384,10 +411,16 @@ std::vector<char> BombeAttack::traceThroughEnigma(
     // プラグボードなしでエニグマを作成
     auto rotors = std::vector<std::unique_ptr<Rotor>>();
     for (const auto& type : rotorOrder) {
+        if (enigma::ROTOR_DEFINITIONS.find(type) == enigma::ROTOR_DEFINITIONS.end()) {
+            return std::vector<char>();  // 無効なローター
+        }
         auto& def = enigma::ROTOR_DEFINITIONS.at(type);
         rotors.push_back(std::make_unique<Rotor>(def.wiring, def.getFirstNotch()));
     }
     
+    if (enigma::REFLECTOR_DEFINITIONS.find(reflectorType_) == enigma::REFLECTOR_DEFINITIONS.end()) {
+        return std::vector<char>();  // 無効なリフレクター
+    }
     auto& refDef = enigma::REFLECTOR_DEFINITIONS.at(reflectorType_);
     auto reflector = std::make_unique<Reflector>(refDef.wiring);
     auto plugboard = std::make_unique<Plugboard>(std::vector<std::string>{});
@@ -415,6 +448,9 @@ std::vector<std::vector<std::string>> BombeAttack::generatePermutations(
     const std::vector<std::string>& items) {
     std::vector<std::vector<std::string>> result;
     std::vector<std::string> current = items;
+    
+    // std::next_permutationは入力がソートされている必要がある
+    std::sort(current.begin(), current.end());
     
     do {
         result.push_back(current);

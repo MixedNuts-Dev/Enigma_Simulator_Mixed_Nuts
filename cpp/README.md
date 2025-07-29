@@ -233,6 +233,10 @@ cmake -DBUILD_STATIC=ON ..
   - 電気経路追跡シミュレーション
   - 双方向マッピングの競合検出
   - `hasPlugboardConflict_`フラグによる状態管理
+  - **Diagonal Board実装**: 史実のBombeで使用された高速矛盾検出機構
+    - 自己ステッカー（self-stecker）の即座検出
+    - Union-Find構造による接続コンポーネント管理
+    - 循環や奇数サイズコンポーネントなどの矛盾を効率的に検出
 - **言語標準**: C++11
 - **並列処理**: OpenMP
 - **ビルドシステム**: CMake

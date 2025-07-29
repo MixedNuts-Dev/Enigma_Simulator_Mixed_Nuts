@@ -7,6 +7,7 @@
 #include <future>
 #include <map>
 #include <set>
+#include "DiagonalBoard.h"
 
 struct CandidateResult {
     double score;
@@ -52,6 +53,7 @@ private:
     std::vector<CandidateResult> results_;
     bool hasPlugboardConflict_ = false;
     std::function<void(const std::string&)> progressCallback_;
+    DiagonalBoard diagonalBoard_;
     
     void testPosition(const std::vector<int>& positions,
                      const std::vector<std::string>& rotorOrder,

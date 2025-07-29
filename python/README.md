@@ -129,6 +129,10 @@ python -m PyInstaller --onefile --noconsole --name enigma_simulator --hidden-imp
   - 制約伝播による効率的なプラグボード推定
   - 電気経路追跡シミュレーション
   - 双方向マッピングの競合検出
+  - **Diagonal Board実装**: 史実のBombeで使用された高速矛盾検出機構
+    - 自己ステッカー（self-stecker）の即座検出
+    - Union-Find構造による接続コンポーネント管理
+    - 循環や奇数サイズコンポーネントなどの矛盾を効率的に検出
 - **並列処理**: `multiprocessing`と`concurrent.futures`を使用
 - **GUI**: tkinterベース（テキストウィジェットによるコピー可能な出力）
 - **アーキテクチャ**: オブジェクト指向設計（OOP）

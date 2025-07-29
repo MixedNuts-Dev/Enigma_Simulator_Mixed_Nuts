@@ -18,6 +18,7 @@ public class BombeAttack {
     private volatile boolean stopFlag = false;
     private final List<CandidateResult> results = new CopyOnWriteArrayList<>();
     private volatile boolean hasPlugboardConflict = false;
+    private final DiagonalBoard diagonalBoard = new DiagonalBoard();
     
     public static class CandidateResult implements Comparable<CandidateResult> {
         public final double score;
@@ -245,14 +246,42 @@ public class BombeAttack {
             return new HashMap<>();
         }
         
+        // プラグボードなしでの暗号化結果を保存
+        String noPlugboardResult = testResult;
+        
+        // プラグボードの推定：実際のBombeアルゴリズム
+        // 各位置でクリブ文字と暗号文字の対応を確認
+        Map<Character, Character> requiredMappings = new HashMap<>();
+        
+        for (int i = 0; i < cribText.length(); i++) {
+            char plainChar = cribText.charAt(i);
+            char cipherChar = cipherPart.charAt(i);
+            char noPlugChar = noPlugboardResult.charAt(i);
+            
+            // プラグボードが必要な変換を記録
+            // まず、プラグボードなしでの出力が暗号文と異なる場合
+            if (noPlugChar != cipherChar) {
+                // noPlugCharをcipherCharに変換する必要がある
+                if (!propagateConstraints(requiredMappings, noPlugChar, cipherChar)) {
+                    hasPlugboardConflict = true;
+                    return new HashMap<>();
+                }
+            }
+        }
+        
+        // 推定されたマッピングから有効なプラグボード設定を生成
+        if (!requiredMappings.isEmpty()) {
+            return requiredMappings;
+        }
+        
         // プラグボードなしでエニグマを通る経路を追跡
         List<Character> pathChars = traceThroughEnigma(positions, rotorOrder, offset, cribText);
         
         // すべての可能なプラグボード仮説を試す
         for (char startLetter = 'A'; startLetter <= 'Z'; startLetter++) {
-            // 最初の文字が自己ステッカーの場合はスキップ
-            if (cribText.length() == 0 || (cribText.charAt(0) == cipherPart.charAt(0))) {
-                continue;
+            // エニグマは文字を自分自身に暗号化しない
+            if (startLetter == cribText.charAt(0)) {
+                continue;  // 自己ステッカーはスキップ
             }
             
             Map<Character, Character> testWiring = new HashMap<>();
@@ -301,6 +330,10 @@ public class BombeAttack {
             }
             
             if (!conflict && testWiring.size() <= 20) { // 最大10ペア（20マッピング）
+                // プラグボード仮説をdiagonal boardでテスト
+                if (diagonalBoard.hasContradiction(testWiring)) {
+                    continue;  // 矛盾があればスキップ
+                }
                 // プラグボードペアを抽出
                 Set<Character> used = new HashSet<>();
                 Map<Character, Character> plugboardPairs = new HashMap<>();
