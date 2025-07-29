@@ -16,7 +16,8 @@ class BombeGUI:
     def __init__(self, master):
         self.master = master
         self.master.title("Bombe Machine Simulator - Enigma Cryptanalysis")
-        self.master.geometry("800x900")
+        self.master.geometry("900x1100")
+        self.master.minsize(800, 900)  # 最小サイズを設定
         
         self.log_queue = queue.Queue()
         self.bombe_thread = None
@@ -157,7 +158,7 @@ class BombeGUI:
         log_frame = ttk.LabelFrame(self.master, text="Analysis Log", padding=10)
         log_frame.pack(pady=10, padx=20, fill="both", expand=True)
         
-        self.log_text = scrolledtext.ScrolledText(log_frame, wrap=tk.WORD, height=20)
+        self.log_text = scrolledtext.ScrolledText(log_frame, wrap=tk.WORD, height=15)
         self.log_text.pack(fill="both", expand=True)
         
         # ログの色設定
@@ -181,7 +182,7 @@ class BombeGUI:
         scrollbar = ttk.Scrollbar(list_frame)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
-        self.candidate_listbox = tk.Listbox(list_frame, yscrollcommand=scrollbar.set, height=5)
+        self.candidate_listbox = tk.Listbox(list_frame, yscrollcommand=scrollbar.set, height=8)
         self.candidate_listbox.pack(side=tk.LEFT, fill="both", expand=True)
         scrollbar.config(command=self.candidate_listbox.yview)
         

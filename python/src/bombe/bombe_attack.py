@@ -8,6 +8,7 @@ import multiprocessing
 
 from ..core import EnigmaMachine as Enigma, Rotor, Reflector, Plugboard
 from ..core import ROTOR_DEFINITIONS, REFLECTOR_DEFINITIONS
+from ..core.diagonal_board import DiagonalBoard
 
 
 class Bombe:
@@ -26,6 +27,7 @@ class Bombe:
         self.lock = threading.Lock()
         self.num_threads = max(1, multiprocessing.cpu_count() - 1)
         self.has_plugboard_conflict = False
+        self.diagonal_board = DiagonalBoard()
         
         # メニューを作成（クリブとその暗号文の対応）
         self.menu = list(zip(self.crib_text, self.cipher_text))
@@ -220,7 +222,6 @@ class Bombe:
             
             with self.lock:
                 self.candidates_with_scores.append((score, positions, rotor_types, plugboard_info, match_rate, num_pairs, crib_offset))
-                self.log(f"Found exact match at {pos_str} with {num_pairs} plugboard pairs: {plugboard_info}")
             return True
         elif not self.has_plugboard_conflict and not plugboard_hypothesis:
             # プラグボードが推定されない場合の部分一致をチェック
@@ -267,14 +268,47 @@ class Bombe:
         if self.search_without_plugboard:
             return []
         
+        # プラグボードなしでの暗号化結果を保存
+        no_plugboard_result = test_result
+        
+        # プラグボードの推定：実際のBombeアルゴリズム
+        # 各位置でクリブ文字と暗号文字の対応を確認
+        required_mappings = {}
+        
+        for i in range(len(self.crib_text)):
+            plain_char = self.crib_text[i]
+            cipher_char = cipher_part[i]
+            no_plug_char = no_plugboard_result[i]
+            
+            # プラグボードが必要な変換を記録
+            # まず、プラグボードなしでの出力が暗号文と異なる場合
+            if no_plug_char != cipher_char:
+                # no_plug_charをcipher_charに変換する必要がある
+                if not self.propagate_constraints(required_mappings, no_plug_char, cipher_char):
+                    self.has_plugboard_conflict = True
+                    return []
+        
+        # 推定されたマッピングから有効なプラグボード設定を生成
+        if required_mappings:
+            plugboard_pairs = []
+            used = set()
+            
+            for from_char, to_char in required_mappings.items():
+                if from_char not in used and to_char not in used and from_char < to_char:
+                    plugboard_pairs.append((from_char, to_char))
+                    used.add(from_char)
+                    used.add(to_char)
+            
+            return plugboard_pairs
+        
         # プラグボードなしでエニグマを通る経路を追跡
         path_chars = self.trace_through_enigma(positions, rotor_types, crib_offset, self.crib_text)
         
-        # すべての可能なプラグボード仮説を試す
+        # 制約伝播による推定が失敗した場合、別のアプローチを試す
         for start_letter in string.ascii_uppercase:
-            # 最初の文字が自己ステッカーの場合はスキップ
-            if len(self.crib_text) == 0 or (self.crib_text[0] == cipher_part[0]):
-                continue
+            # エニグマは文字を自分自身に暗号化しない
+            if start_letter == self.crib_text[0]:
+                continue  # 自己ステッカーはスキップ
             
             test_wiring = {}
             conflict = False
@@ -323,6 +357,9 @@ class Bombe:
                     break
             
             if not conflict and len(test_wiring) <= 20:  # 最大10ペア（20マッピング）
+                # プラグボード仮説をdiagonal boardでテスト
+                if self.diagonal_board.has_contradiction(test_wiring):
+                    continue  # 矛盾があればスキップ
                 # プラグボードペアを抽出
                 used = set()
                 plugboard_pairs = []
