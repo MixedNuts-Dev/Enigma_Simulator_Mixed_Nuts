@@ -391,37 +391,6 @@ class Bombe:
                 if verify_result == cipher_part:
                     return plugboard_pairs
         
-        # 制約伝播が失敗した場合、一般的な設定をテスト
-        common_plugboards = [
-            [('H', 'A'), ('L', 'B'), ('W', 'C')],  # 既知のテストケース
-            [('A', 'R'), ('G', 'K'), ('O', 'X')],
-            [('B', 'J'), ('C', 'H'), ('P', 'I')],
-            [('D', 'F'), ('H', 'J'), ('L', 'X')],
-            [('E', 'W'), ('K', 'L'), ('U', 'Q')]
-        ]
-        
-        for test_pairs in common_plugboards:
-            # テスト用マシンを作成
-            test_rotors = []
-            for rotor_type in rotor_types:
-                rotor_def = ROTOR_DEFINITIONS[rotor_type]
-                notch = rotor_def.get("notch", rotor_def.get("notches", [0])[0])
-                rotor = Rotor(rotor_def["wiring"], notch)
-                test_rotors.append(rotor)
-            
-            test_reflector = Reflector(REFLECTOR_DEFINITIONS[self.reflector_type])
-            test_enigma = Enigma(test_rotors, test_reflector, Plugboard(test_pairs))
-            test_enigma.set_rotor_positions(positions)
-            
-            # オフセットまで進める
-            for _ in range(crib_offset):
-                test_enigma.step_rotors()
-            
-            # 暗号化をテスト
-            verify_result = test_enigma.encrypt(self.crib_text)
-            if verify_result == cipher_part:
-                return test_pairs  # 動作するプラグボードを発見
-        
         self.has_plugboard_conflict = True
         return []
     
