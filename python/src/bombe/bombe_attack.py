@@ -387,6 +387,10 @@ class Bombe:
                         used.add(char1)
                         used.add(char2)
                 
+                # プラグボード仮説をdiagonal boardでテスト
+                if self.diagonal_board.has_contradiction(deduced_steckers):
+                    continue  # 矛盾があればスキップ
+                
                 # 検証
                 verify_rotors = []
                 for rotor_type in rotor_types:

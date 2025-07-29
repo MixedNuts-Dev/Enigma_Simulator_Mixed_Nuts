@@ -65,6 +65,7 @@ private:
     std::vector<CandidateResult> results_;
     bool hasPlugboardConflict_ = false;
     std::function<void(const std::string&)> progressCallback_;
+    mutable std::mutex diagonalBoardMutex_;
     DiagonalBoard diagonalBoard_;
     
     // CPU負荷管理
