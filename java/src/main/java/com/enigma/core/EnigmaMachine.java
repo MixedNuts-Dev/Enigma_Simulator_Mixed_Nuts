@@ -80,4 +80,12 @@ public class EnigmaMachine {
     public List<Rotor> getRotors() {
         return rotors;
     }
+    
+    public int[] getRotorPositions() {
+        int[] positions = new int[rotors.size()];
+        for (int i = 0; i < rotors.size(); i++) {
+            positions[i] = rotors.get(i).getPosition();
+        }
+        return positions;
+    }
 }

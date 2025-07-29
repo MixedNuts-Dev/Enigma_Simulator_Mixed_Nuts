@@ -115,6 +115,13 @@ class BombeGUI:
                                                      text="Test all rotor orders (全ローター順を試す - 6通り)",
                                                      variable=self.test_all_orders_var)
         self.test_all_orders_check.grid(row=2, column=0, columnspan=3, pady=5)
+        
+        # プラグボードなし検索オプション
+        self.search_without_plugboard_var = tk.BooleanVar(value=False)
+        self.search_without_plugboard_check = ttk.Checkbutton(rotor_frame,
+                                                              text="Search without plugboard (プラグボードなしで検索)",
+                                                              variable=self.search_without_plugboard_var)
+        self.search_without_plugboard_check.grid(row=3, column=0, columnspan=3, pady=5)
     
     def _setup_control_section(self):
         """コントロールボタンセクションをセットアップ"""
@@ -221,9 +228,11 @@ class BombeGUI:
         
         # 全ローター順探索オプションを取得
         test_all_orders = self.test_all_orders_var.get()
+        search_without_plugboard = self.search_without_plugboard_var.get()
         
         # Bombeインスタンスを作成
-        self.bombe = Bombe(crib, cipher, rotor_types, reflector_type, self.log_queue, test_all_orders)
+        self.bombe = Bombe(crib, cipher, rotor_types, reflector_type, self.log_queue, 
+                          test_all_orders, search_without_plugboard)
         
         # 別スレッドで実行
         self.bombe_thread = threading.Thread(target=self.run_attack)
@@ -324,7 +333,8 @@ class BombeGUI:
             "cipher": self.cipher_entry.get(),
             "rotors": [var.get() for var in self.rotor_vars],
             "reflector": self.reflector_var.get(),
-            "test_all_orders": self.test_all_orders_var.get()
+            "test_all_orders": self.test_all_orders_var.get(),
+            "search_without_plugboard": self.search_without_plugboard_var.get()
         }
         
         filename = filedialog.asksaveasfilename(
@@ -368,6 +378,9 @@ class BombeGUI:
                 
                 if "test_all_orders" in config:
                     self.test_all_orders_var.set(config["test_all_orders"])
+                
+                if "search_without_plugboard" in config:
+                    self.search_without_plugboard_var.set(config["search_without_plugboard"])
                 
                 messagebox.showinfo("成功", f"{filename}から設定を読み込みました")
             except Exception as e:

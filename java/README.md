@@ -14,7 +14,12 @@
   
 - **Bombe攻撃ツール**
   - 既知平文攻撃（クリブアタック）
+  - 電気経路追跡による制約伝播アルゴリズム
+  - プラグボード配線の自動推定
   - 並列処理による高速総当たり攻撃
+  - 全ローター順序の探索オプション
+  - プラグボードなし探索モード
+  - 部分一致検出（50%以上のマッチ）
   - プログレスバーでの進捗表示
 
 ## 必要要件
@@ -32,17 +37,21 @@ java/
 │       └── java/
 │           └── com/
 │               └── enigma/
-│                   ├── EnigmaApp.java          # メインアプリケーション
-│                   ├── EnigmaController.java   # GUIコントローラー
-│                   ├── EnigmaMachine.java      # エニグマ本体
-│                   ├── Rotor.java              # ローター実装
-│                   ├── Reflector.java          # リフレクター実装
-│                   ├── Plugboard.java          # プラグボード実装
-│                   ├── BombeAttack.java        # Bombe攻撃実装
-│                   └── SettingsManager.java    # 設定管理
+│                   ├── core/                   # コア暗号化機能
+│                   │   ├── EnigmaMachine.java  # エニグマ本体
+│                   │   ├── Rotor.java          # ローター実装
+│                   │   ├── Reflector.java      # リフレクター実装
+│                   │   ├── Plugboard.java      # プラグボード実装
+│                   │   └── RotorConfig.java    # ローター設定
+│                   ├── bombe/                  # Bombe攻撃機能
+│                   │   └── BombeAttack.java    # Bombe攻撃実装
+│                   └── gui/                    # GUIコンポーネント
+│                       ├── EnigmaGUI.java      # メインGUI
+│                       └── BombeGUI.java       # Bombe攻撃GUI
 ├── target/                                     # ビルド出力
 ├── pom.xml                                     # Maven設定
 ├── run_enigma.bat                             # Windows実行用バッチ
+├── download-javafx-jars.bat                    # JavaFX自動ダウンロードバッチ
 └── README.md                                   # このファイル
 ```
 
@@ -83,10 +92,10 @@ java -jar target/enigma-simulator-1.0.jar config.json
 
 ### バッチファイル（Windows）
 
-`build-exe-without-maven.bat`をダブルクリックするか、コマンドプロンプトから実行：
+`run_enigma.bat`をダブルクリックするか、コマンドプロンプトから実行：
 
 ```cmd
-build-exe-without-maven.bat
+run_enigma.bat
 ```
 
 ## 使用方法
@@ -159,10 +168,17 @@ mvn clean compile assembly:single
 
 Java 11以降ではJavaFXが別途必要です：
 
-```bash
-# JavaFXランタイムをダウンロードして実行
-java --module-path /path/to/javafx/lib --add-modules javafx.controls,javafx.fxml -jar enigma-simulator.jar
-```
+1. **自動ダウンロード（Windows）**:
+   ```cmd
+   # JavaFXを自動でダウンロードするバッチファイルを実行
+   download-javafx-jars.bat
+   ```
+
+2. **手動設定**:
+   ```bash
+   # JavaFXランタイムをダウンロードして実行
+   java --module-path /path/to/javafx/lib --add-modules javafx.controls,javafx.fxml -jar enigma-simulator.jar
+   ```
 
 ### バッチファイルが動作しない場合
 
@@ -172,8 +188,12 @@ java --module-path /path/to/javafx/lib --add-modules javafx.controls,javafx.fxml
 
 ## 技術詳細
 
+- **Bombeアルゴリズム**:
+  - 制約伝播による効率的なプラグボード推定
+  - 電気経路追跡シミュレーション
+  - 双方向マッピングの競合検出
 - **GUI**: JavaFX
-- **並列処理**: Java Concurrency API (`ExecutorService`)
+- **並列処理**: Java Concurrency API (`CompletableFuture`, `ExecutorService`)
 - **ビルドツール**: Maven
 - **最小Java版**: Java 8
 
@@ -183,7 +203,7 @@ MITライセンス
 
 ## 作者
 
-[Your Name]
+[Mixed Nuts tukasa]
 
 ## 参考文献
 

@@ -154,11 +154,18 @@ class EnigmaGUI:
     
     def _setup_result_frame(self):
         """結果表示フレームをセットアップ"""
-        # 結果表示
-        self.label_result = tk.Label(self.master, text="Result will appear here", 
-                                   font=("Arial", 14, "bold"), 
-                                   borderwidth=2, relief="groove", height=3)
-        self.label_result.pack(pady=10, padx=20, fill="x")
+        # 結果表示フレーム
+        result_frame = tk.Frame(self.master, borderwidth=2, relief="groove")
+        result_frame.pack(pady=10, padx=20, fill="x")
+        
+        # 結果表示用テキストウィジェット
+        self.text_result = tk.Text(result_frame, height=3, font=("Arial", 14, "bold"), 
+                                  wrap="word", state="disabled")
+        self.text_result.pack(pady=5, padx=5, fill="x")
+        
+        # コピーボタン
+        copy_button = tk.Button(result_frame, text="Copy Result", command=self.copy_result)
+        copy_button.pack(pady=5)
         
         # ローター位置表示
         self.label_rotor_positions = tk.Label(self.master, text="Rotor Positions: ", 
@@ -178,7 +185,10 @@ class EnigmaGUI:
             result = self.enigma.encrypt(message)
             
             # 結果を表示
-            self.label_result.config(text=f"Encrypted: {result}")
+            self.text_result.config(state="normal")
+            self.text_result.delete(1.0, tk.END)
+            self.text_result.insert(1.0, f"Encrypted: {result}")
+            self.text_result.config(state="disabled")
             
             # ローター位置を更新
             positions = self.enigma.get_rotor_positions()
@@ -191,6 +201,26 @@ class EnigmaGUI:
                 
         except Exception as e:
             messagebox.showerror("エラー", f"エラーが発生しました: {str(e)}")
+    
+    def copy_result(self):
+        """結果をクリップボードにコピー"""
+        try:
+            # テキストウィジェットから結果を取得
+            result_text = self.text_result.get(1.0, tk.END).strip()
+            
+            # "Encrypted: "プレフィックスを削除して暗号文のみを取得
+            if result_text.startswith("Encrypted: "):
+                result_text = result_text[11:]  # "Encrypted: "の長さは11文字
+            
+            # クリップボードにコピー
+            self.master.clipboard_clear()
+            self.master.clipboard_append(result_text)
+            self.master.update()
+            
+            # フィードバックメッセージ
+            messagebox.showinfo("コピー完了", "暗号文をクリップボードにコピーしました")
+        except Exception as e:
+            messagebox.showerror("エラー", f"コピーに失敗しました: {str(e)}")
     
     def apply_settings(self):
         """現在のUI設定をエニグママシンに適用"""

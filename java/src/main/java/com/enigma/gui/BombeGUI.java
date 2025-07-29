@@ -33,6 +33,7 @@ public class BombeGUI extends Application {
     private ComboBox<String> rotor1Combo, rotor2Combo, rotor3Combo;
     private ComboBox<String> reflectorCombo;
     private CheckBox testAllOrdersCheck;
+    private CheckBox searchWithoutPlugboardCheck;
     private TextArea logArea;
     private ListView<String> candidatesList;
     private Label resultLabel;
@@ -86,6 +87,7 @@ public class BombeGUI extends Application {
         );
         
         testAllOrdersCheck = new CheckBox("Test all rotor orders (全ローター順を試す)");
+        searchWithoutPlugboardCheck = new CheckBox("Search without plugboard (プラグボードなしで検索)");
         
         // Control buttons
         controlBox = new HBox(10);
@@ -140,6 +142,7 @@ public class BombeGUI extends Application {
             new Label("Rotor Configuration:"),
             rotorBox,
             testAllOrdersCheck,
+            searchWithoutPlugboardCheck,
             new Separator(),
             controlBox,
             progressBar,
@@ -206,7 +209,8 @@ public class BombeGUI extends Application {
                 currentAttack = new BombeAttack(
                     crib, cipher, rotorTypes, 
                     reflectorCombo.getValue(),
-                    testAllOrdersCheck.isSelected()
+                    testAllOrdersCheck.isSelected(),
+                    searchWithoutPlugboardCheck.isSelected()
                 );
                 
                 return currentAttack.attack(message -> 
@@ -282,15 +286,29 @@ public class BombeGUI extends Application {
         int index = candidatesList.getSelectionModel().getSelectedIndex();
         if (index >= 0 && allResults != null && index < allResults.size()) {
             CandidateResult result = allResults.get(index);
+            
+            // Build plugboard string
+            StringBuilder plugboardStr = new StringBuilder();
+            if (result.plugboard != null && !result.plugboard.isEmpty()) {
+                for (Map.Entry<Character, Character> entry : result.plugboard.entrySet()) {
+                    if (entry.getKey() < entry.getValue()) {  // Avoid duplicates
+                        if (plugboardStr.length() > 0) plugboardStr.append(" ");
+                        plugboardStr.append(entry.getKey()).append(entry.getValue());
+                    }
+                }
+            }
+            
             String detail = String.format(
                 "Selected: #%d\nPosition: %s, Rotors: %s\n" +
-                "Match rate: %.1%%, Plugboard pairs: %d\n" +
+                "Match rate: %.1f%%, Plugboard pairs: %d\n" +
+                "Plugboard: %s\n" +
                 "Crib offset: %d",
                 index + 1,
                 result.getPositionString(),
                 result.getRotorString(),
                 result.matchRate * 100,
                 result.plugboardPairs,
+                plugboardStr.length() > 0 ? plugboardStr.toString() : "None",
                 result.offset
             );
             log("\n" + detail);
@@ -312,6 +330,7 @@ public class BombeGUI extends Application {
         prefs.put("rotor3", rotor3Combo.getValue());
         prefs.put("reflector", reflectorCombo.getValue());
         prefs.putBoolean("testAllOrders", testAllOrdersCheck.isSelected());
+        prefs.putBoolean("searchWithoutPlugboard", searchWithoutPlugboardCheck.isSelected());
         
         showInfo("設定が保存されました");
     }
@@ -337,6 +356,7 @@ public class BombeGUI extends Application {
                 if (settings.has("rotor3")) rotor3Combo.setValue(settings.get("rotor3").getAsString());
                 if (settings.has("reflector")) reflectorCombo.setValue(settings.get("reflector").getAsString());
                 if (settings.has("testAllOrders")) testAllOrdersCheck.setSelected(settings.get("testAllOrders").getAsBoolean());
+                if (settings.has("searchWithoutPlugboard")) searchWithoutPlugboardCheck.setSelected(settings.get("searchWithoutPlugboard").getAsBoolean());
                 
                 showInfo("設定が読み込まれました");
             } catch (Exception e) {
@@ -353,6 +373,7 @@ public class BombeGUI extends Application {
         rotor3Combo.setValue(prefs.get("rotor3", "III"));
         reflectorCombo.setValue(prefs.get("reflector", "B"));
         testAllOrdersCheck.setSelected(prefs.getBoolean("testAllOrders", false));
+        searchWithoutPlugboardCheck.setSelected(prefs.getBoolean("searchWithoutPlugboard", false));
     }
     
     private void exportResultsToJson() {
@@ -383,6 +404,7 @@ public class BombeGUI extends Application {
                 settings.addProperty("rotor3", rotor3Combo.getValue());
                 settings.addProperty("reflector", reflectorCombo.getValue());
                 settings.addProperty("testAllOrders", testAllOrdersCheck.isSelected());
+                settings.addProperty("searchWithoutPlugboard", searchWithoutPlugboardCheck.isSelected());
                 root.add("settings", settings);
                 
                 // Results
