@@ -1,15 +1,15 @@
-"""Plugboard component for the Enigma machine."""
+"""エニグママシンのプラグボードコンポーネント"""
 
 
 class Plugboard:
-    """Enigma plugboard (Steckerbrett) implementation."""
+    """エニグマプラグボード（Steckerbrett）の実装"""
     
     def __init__(self, connections):
-        """Initialize the plugboard.
+        """プラグボードを初期化
         
         Args:
-            connections: List of tuples representing connected letter pairs
-                        e.g., [('A', 'B'), ('C', 'D')]
+            connections: 接続された文字ペアを表すタプルのリスト
+                        例: [('A', 'B'), ('C', 'D')]
         """
         self.connections = {}
         for a, b in connections:

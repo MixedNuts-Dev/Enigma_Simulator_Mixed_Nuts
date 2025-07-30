@@ -1,16 +1,16 @@
-"""Reflector component for the Enigma machine."""
+"""エニグママシンのリフレクターコンポーネント"""
 
 import string
 
 
 class Reflector:
-    """Enigma reflector implementation."""
+    """エニグマリフレクターの実装"""
     
     def __init__(self, mapping):
-        """Initialize a reflector.
+        """リフレクターを初期化
         
         Args:
-            mapping: 26-character string defining the reflector wiring
+            mapping: リフレクターの配線を定義する26文字の文字列
         """
         self.mapping = mapping
     

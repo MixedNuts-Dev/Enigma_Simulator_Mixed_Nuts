@@ -1,46 +1,46 @@
 class DiagonalBoard:
-    """Diagonal board for efficient contradiction detection in plugboard hypotheses"""
+    """プラグボード仮説の矛盾を効率的に検出するためのダイアゴナルボード"""
     
     def __init__(self):
         self.connections = [set() for _ in range(26)]
     
     def test_hypothesis(self, wiring):
-        """Test plugboard hypothesis and return True if there's a contradiction"""
-        # Check for self-steckers
+        """プラグボード仮説をテストし、矛盾があるTrueを返す"""
+        # 自己ステッカーをチェック
         if self.has_self_stecker(wiring):
-            return True  # Contradiction found
+            return True  # 矛盾を発見
         
-        # Check for more complex contradictions
+        # より複雑な矛盾をチェック
         return self.has_contradiction(wiring)
     
     def has_self_stecker(self, wiring):
-        """Check if any character maps to itself"""
+        """文字が自分自身にマッピングされているかチェック"""
         for from_char, to_char in wiring.items():
             if from_char == to_char:
-                return True  # Self-stecker detected
+                return True  # 自己ステッカーを検出
         return False
     
     def has_contradiction(self, wiring):
-        """Efficient contradiction detection"""
-        # Clear connections
+        """効率的な矛盾検出"""
+        # 接続をクリア
         for conn in self.connections:
             conn.clear()
         
-        # Build connection graph from wiring
+        # 配線から接続グラフを構築
         for from_char, to_char in wiring.items():
             from_idx = ord(from_char) - ord('A')
             to_idx = ord(to_char) - ord('A')
             
-            # Add bidirectional connections
+            # 双方向接続を追加
             self.connections[from_idx].add(to_char)
             self.connections[to_idx].add(from_char)
         
-        # Check transitive closure
+        # 推移閉包をチェック
         return self._check_transitive_closure(wiring)
     
     def _check_transitive_closure(self, wiring):
-        """Check for contradictions using Union-Find structure"""
-        # Union-Find structure to track connected components
+        """Union-Find構造を使用して矛盾をチェック"""
+        # 連結成分を追跡するUnion-Find構造
         parent = list(range(26))
         
         def find(x):
@@ -53,13 +53,13 @@ class DiagonalBoard:
             if px != py:
                 parent[px] = py
         
-        # Union based on wiring
+        # 配線に基づいて統合
         for from_char, to_char in wiring.items():
             from_idx = ord(from_char) - ord('A')
             to_idx = ord(to_char) - ord('A')
             unite(from_idx, to_idx)
         
-        # Check component sizes
+        # コンポーネントサイズをチェック
         components = {}
         for i in range(26):
             root = find(i)
@@ -67,27 +67,27 @@ class DiagonalBoard:
                 components[root] = set()
             components[root].add(i)
         
-        # Check plugboard constraints
+        # プラグボード制約をチェック
         for comp in components.values():
-            # Odd-sized components are impossible (plugboard uses pairs only)
+            # 奇数サイズのコンポーネントは不可能（プラグボードはペアのみ使用）
             if len(comp) % 2 != 0 and len(comp) > 1:
-                return True  # Contradiction: odd-sized component
+                return True  # 矛盾: 奇数サイズのコンポーネント
             
-            # Check connection count for each character
+            # 各文字の接続数をチェック
             for idx in comp:
                 ch = chr(ord('A') + idx)
                 connection_count = 0
                 
-                # Count connections for this character
+                # この文字の接続数をカウント
                 for from_char, to_char in wiring.items():
                     if from_char == ch or to_char == ch:
                         connection_count += 1
                 
-                # In plugboard, each character has at most one connection
-                if connection_count > 2:  # Bidirectional, so 2 max
-                    return True  # Contradiction: multiple connections
+                # プラグボードでは、各文字は最大1つの接続を持つ
+                if connection_count > 2:  # 双方向なので最大2
+                    return True  # 矛盾: 複数の接続
         
-        # Check for cycles (3+ character cycles are impossible)
+        # サイクルをチェック（3文字以上のサイクルは不可能）
         for start_char in wiring:
             current = wiring.get(start_char)
             steps = 1
@@ -97,6 +97,6 @@ class DiagonalBoard:
                 steps += 1
                 
                 if current == start_char and steps > 2:
-                    return True  # Contradiction: 3+ character cycle
+                    return True  # 矛盾: 3文字以上のサイクル
         
-        return False  # No contradiction
+        return False  # 矛盾なし

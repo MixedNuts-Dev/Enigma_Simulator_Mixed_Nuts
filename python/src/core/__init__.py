@@ -1,4 +1,4 @@
-"""Core Enigma machine components."""
+"""エニグママシンのコアコンポーネント"""
 
 from .rotor import Rotor
 from .reflector import Reflector
