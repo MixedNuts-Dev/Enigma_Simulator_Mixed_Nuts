@@ -7,6 +7,8 @@
 
 class Plugboard {
 public:
+    static constexpr int MAX_PAIRS = 10; // 史実のエニグマでは最大10組までの接続が可能
+    
     Plugboard();
     explicit Plugboard(const std::vector<std::string>& pairs);
     explicit Plugboard(const std::vector<std::pair<char, char>>& pairs);

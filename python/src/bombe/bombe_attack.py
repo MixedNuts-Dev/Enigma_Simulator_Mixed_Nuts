@@ -6,7 +6,7 @@ import time
 import psutil
 import os
 from itertools import permutations
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, as_completed
 import multiprocessing
 import numpy as np
 from numba import njit
@@ -189,7 +189,7 @@ class Bombe:
     """Bombeマシンのシミュレーション - 歴史的に正確な実装（最適化版統合）"""
     
     def __init__(self, crib_text, cipher_text, rotor_types, reflector_type, log_queue, 
-                 test_all_orders=False, search_without_plugboard=False, use_optimized=None):
+                 test_all_orders=False, search_without_plugboard=False):
         self.crib_text = crib_text.upper()
         self.cipher_text = cipher_text.upper()
         self.rotor_types = rotor_types
@@ -214,9 +214,6 @@ class Bombe:
         
         # ローターとリフレクターのマッピングを事前計算
         self._prepare_mappings()
-        
-        # 常に最適化版を使用
-        self.use_optimized = True
         
         # メニューを作成（クリブとその暗号文の対応）
         self.menu = list(zip(self.crib_text, self.cipher_text))
@@ -464,191 +461,6 @@ class Bombe:
         self.log("\n=== Bombe Attack Completed ===")
         return self.candidates_with_scores
     
-    def _test_rotor_positions_classic(self):
-        """従来版のローター位置テスト"""
-        # 処理開始時刻を記録
-        start_time = time.time()
-        
-        self.log("=== Bombe Attack Started (Classic) ===")
-        self.log(f"Crib: {self.crib_text}")
-        self.log(f"Cipher: {self.cipher_text}")
-        self.log(f"Initial Rotors: {', '.join(self.rotor_types)}")
-        self.log(f"Reflector: {self.reflector_type}")
-        self.log(f"Test all rotor orders: {self.test_all_orders}")
-        self.log(f"Search without plugboard: {self.search_without_plugboard}")
-        self.log(f"Using {self.num_threads} threads (75% of {multiprocessing.cpu_count()} CPUs)")
-        
-        # スレッド優先度を下げる
-        self._adjust_thread_priority()
-        
-        # ローター順の組み合わせを生成
-        if self.test_all_orders:
-            rotor_orders = list(permutations(self.rotor_types, 3))
-            self.log(f"\nTesting {len(rotor_orders)} rotor order combinations...")
-            if len(self.rotor_types) > 3:
-                self.log(f"Rotor combinations: {len(rotor_orders)} (from {len(self.rotor_types)} rotors)")
-        else:
-            rotor_orders = [self.rotor_types]
-        
-        # ループを見つける
-        loops = self.find_loops()
-        if loops:
-            self.log(f"\nFound {len(loops)} loops in menu:")
-            for loop in loops[:5]:
-                self.log(f"  Loop: {' -> '.join(loop)}")
-        else:
-            self.log("\nNo loops found in menu. Using direct contradiction test.")
-        
-        self.log("\nTesting rotor positions...")
-        self.log(f"Using {self.num_threads} threads for parallel processing")
-        
-        self.candidates_with_scores = []
-        
-        # クリブオフセットの範囲を計算
-        max_offset = max(0, len(self.cipher_text) - len(self.crib_text) + 1)
-        
-        # 全タスク数を計算
-        total_positions = 26 ** 3 * len(rotor_orders) * max_offset
-        self.log(f"Total combinations to test: {total_positions}")
-        
-        # タスクを生成
-        tasks = []
-        for rotor_order in rotor_orders:
-            for offset in range(max_offset):
-                for pos1 in range(26):
-                    for pos2 in range(26):
-                        for pos3 in range(26):
-                            tasks.append((list(rotor_order), [pos1, pos2, pos3], offset))
-        
-        # スレッドプール処理
-        tested = 0
-        with ThreadPoolExecutor(max_workers=self.num_threads) as executor:
-            # タスクをバッチに分割して処理
-            batch_size = 1000  # バッチサイズ
-            
-            for i in range(0, len(tasks), batch_size):
-                if self.stop_flag.is_set():
-                    break
-                
-                batch = tasks[i:i + batch_size]
-                futures = []
-                
-                # バッチ内のタスクをサブミット
-                for task in batch:
-                    if self.stop_flag.is_set():
-                        break
-                    future = executor.submit(self.test_position_with_offset, task[1], task[0], task[2])
-                    futures.append(future)
-                
-                # バッチの結果を待つ
-                for future in futures:
-                    if self.stop_flag.is_set():
-                        executor.shutdown(wait=False)
-                        break
-                    
-                    try:
-                        result = future.result(timeout=1.0)
-                        tested += 1
-                    except Exception as e:
-                        tested += 1
-                        pass
-                
-                # バッチごとに進捗を更新
-                progress = (tested / total_positions) * 100
-                self.log(f"Progress: {tested}/{total_positions} ({progress:.1f}%)")
-                
-                # CPU負荷チェック
-                self._throttle_if_needed()
-        
-        # スコアでソート（降順）
-        self.candidates_with_scores.sort(key=lambda x: x[0], reverse=True)
-        
-        # 処理時間を計算
-        elapsed_time = time.time() - start_time
-        
-        self.log(f"\nTested {tested} positions")
-        self.log(f"Found {len(self.candidates_with_scores)} possible settings")
-        
-        # 処理時間を表示
-        if elapsed_time < 60:
-            self.log(f"Processing time: {elapsed_time:.2f} seconds")
-        else:
-            minutes = int(elapsed_time // 60)
-            seconds = elapsed_time % 60
-            self.log(f"Processing time: {minutes} minutes {seconds:.2f} seconds")
-        
-        # 上位10件を表示
-        for i, (score, positions, rotors, plugboard, match_rate, num_pairs, offset) in enumerate(self.candidates_with_scores[:10]):
-            pos_str = ''.join([string.ascii_uppercase[p] for p in positions])
-            rotor_str = '-'.join(rotors)
-            plugboard_str = ', '.join(plugboard) if plugboard else 'None'
-            self.log(f"  #{i+1}: {pos_str} ({rotor_str}) - Score: {score:.1f}, Match: {match_rate:.1%}, Plugboard: {plugboard_str}, Offset: {offset}")
-        
-        self.log("\n=== Bombe Attack Completed ===")
-        return self.candidates_with_scores
-    
-    def test_position_with_offset(self, positions, rotor_types, crib_offset):
-        """特定のローター位置とクリブオフセットでテスト - 歴史的に正確なBombe実装"""
-        # クリブが暗号文の範囲内かチェック
-        if crib_offset + len(self.crib_text) > len(self.cipher_text):
-            return None
-        
-        # 暗号文の該当部分を取得
-        cipher_part = self.cipher_text[crib_offset:crib_offset + len(self.crib_text)]
-        
-        # プラグボード推定のための電気的経路を追跡
-        plugboard_hypothesis = self.deduce_plugboard_wiring(positions, rotor_types, crib_offset)
-        
-        if plugboard_hypothesis is None and self.has_plugboard_conflict:
-            return None
-        
-        # 推定されたプラグボードで検証
-        rotors = []
-        for rotor_type in rotor_types:
-            rotor_def = ROTOR_DEFINITIONS[rotor_type]
-            notch = rotor_def.get("notch", rotor_def.get("notches", [0])[0])
-            rotor = Rotor(rotor_def["wiring"], notch)
-            rotors.append(rotor)
-        
-        reflector = Reflector(REFLECTOR_DEFINITIONS[self.reflector_type])
-        enigma = Enigma(rotors, reflector, Plugboard(plugboard_hypothesis))
-        enigma.set_rotor_positions(positions)
-        
-        # クリブオフセットまでローターを進める
-        for _ in range(crib_offset):
-            enigma.step_rotors()
-        
-        # この位置でクリブを暗号化して検証
-        test_result = enigma.encrypt(self.crib_text)
-        
-        # 完全一致をチェック
-        if test_result == cipher_part:
-            match_rate = 1.0
-            num_pairs = len(plugboard_hypothesis)
-            score = 100.0 - num_pairs * 2
-            
-            pos_str = ''.join([string.ascii_uppercase[p] for p in positions])
-            plugboard_info = [f"{p[0]}{p[1]}" for p in plugboard_hypothesis]
-            
-            with self.lock:
-                self.candidates_with_scores.append((score, positions, rotor_types, plugboard_info, match_rate, num_pairs, crib_offset))
-            return True
-        elif not self.has_plugboard_conflict and not plugboard_hypothesis:
-            # プラグボードが推定されない場合の部分一致をチェック
-            matches = 0
-            for i in range(len(test_result)):
-                if test_result[i] == cipher_part[i]:
-                    matches += 1
-            
-            match_rate = matches / len(self.crib_text)
-            if match_rate >= 0.5:
-                score = match_rate * 100
-                with self.lock:
-                    self.candidates_with_scores.append((score, positions, rotor_types, [], match_rate, 0, crib_offset))
-                return True
-        
-        return None
-    
     def deduce_plugboard_wiring(self, positions, rotor_types, crib_offset):
         """史実のBombeアルゴリズムに基づくプラグボード配線推定"""
         self.has_plugboard_conflict = False
@@ -697,6 +509,10 @@ class Bombe:
                 
                 for char1, char2 in deduced_steckers.items():
                     if char1 not in used and char2 not in used and char1 != char2:
+                        # 最大10組の制限をチェック
+                        if len(plugboard_pairs) >= 10:
+                            break
+                        
                         if char1 < char2:
                             plugboard_pairs.append((char1, char2))
                         else:
@@ -782,11 +598,15 @@ class Bombe:
                 # 新しいステッカーペアを記録
                 implications.append((output_before_plugboard, expected_output))
         
-        # 含意されたステッカーを追加
+        # 含意されたステッカーを追加（最大10組の制限を考慮）
+        current_pairs = len(deduced_steckers) // 2  # 各ペアは2つのエントリを持つ
         for char1, char2 in implications:
+            if current_pairs >= 10:
+                break  # 10組の制限に達した
             if char1 not in deduced_steckers and char2 not in deduced_steckers:
                 deduced_steckers[char1] = char2
                 deduced_steckers[char2] = char1
+                current_pairs += 1
         
         return True
     

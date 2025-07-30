@@ -236,9 +236,9 @@ class BombeGUI:
         test_all_orders = self.test_all_orders_var.get()
         search_without_plugboard = self.search_without_plugboard_var.get()
         
-        # Bombeインスタンスを作成（常に最適化版を使用）
+        # Bombeインスタンスを作成
         self.bombe = Bombe(crib, cipher, rotor_types, reflector_type, self.log_queue, 
-                          test_all_orders, search_without_plugboard, use_optimized=True)
+                          test_all_orders, search_without_plugboard)
         
         # 別スレッドで実行
         self.bombe_thread = threading.Thread(target=self.run_attack)
@@ -288,7 +288,8 @@ class BombeGUI:
             for i, (score, positions, rotors, plugboard, match_rate, num_pairs, offset) in enumerate(results[:50]):
                 pos_str = ''.join([string.ascii_uppercase[p] for p in positions])
                 rotor_str = '-'.join(rotors)
-                list_text = f"#{i+1}: {pos_str} ({rotor_str}) - Score: {score:.1f}, Match: {match_rate:.1%}, Offset: {offset}"
+                plugboard_str = ' '.join(plugboard) if plugboard else 'なし'
+                list_text = f"#{i+1}: {pos_str} ({rotor_str}) - Score: {score:.1f}, Match: {match_rate:.1%}, PB: {plugboard_str}, Offset: {offset}"
                 self.candidate_listbox.insert(tk.END, list_text)
             
             # デフォルトで最初の候補を選択
@@ -438,33 +439,49 @@ class BombeGUI:
             messagebox.showinfo("選択完了", f"候補 #{self.selected_index + 1} を選択しました。")
     
     def export_to_enigma(self):
-        """最良の結果をEnigma用の設定ファイルとしてエクスポート"""
-        if not hasattr(self, 'best_result') or not self.best_result:
+        """全ての結果をJava版準拠のJSON形式でエクスポート"""
+        if not self.all_results:
             messagebox.showwarning("警告", "エクスポートする結果がありません。")
             return
         
-        # Enigma用の設定を作成
+        # Java版準拠のJSON形式
         config = {
-            "rotors": {
-                "types": list(self.best_result["rotors"]),
-                "positions": list(self.best_result["positions"]),
-                "rings": ["A", "A", "A"]
+            "settings": {
+                "crib": self.crib_entry.get(),
+                "cipher": self.cipher_entry.get(),
+                "rotor1": self.rotor_vars[0].get(),
+                "rotor2": self.rotor_vars[1].get(),
+                "rotor3": self.rotor_vars[2].get(),
+                "reflector": self.reflector_var.get(),
+                "testAllOrders": self.test_all_orders_var.get(),
+                "searchWithoutPlugboard": self.search_without_plugboard_var.get()
             },
-            "reflector": self.reflector_var.get(),
-            "plugboard": " ".join(self.best_result["plugboard"]),
-            "message": "",
-            "bombe_result": {
-                "match_rate": f"{self.best_result['match_rate']:.1%}",
-                "plugboard_pairs": len(self.best_result["plugboard"]),
-                "crib_offset": self.best_result.get("offset", 0),
-                "rotor_order": "-".join(self.best_result["rotors"])
-            }
+            "results": [],
+            "totalResults": len(self.all_results)
         }
+        
+        # 全ての結果を追加
+        for result in self.all_results:
+            score, positions, rotors, plugboard, match_rate, num_pairs, offset = result
+            pos_str = ''.join([string.ascii_uppercase[p] for p in positions])
+            rotor_str = '-'.join(rotors)
+            
+            result_obj = {
+                "position": pos_str,
+                "rotors": rotor_str,
+                "score": float(score),
+                "matchRate": float(match_rate),
+                "plugboardPairs": num_pairs,
+                "offset": offset,
+                "plugboard": list(plugboard)  # プラグボードのリスト
+            }
+            config["results"].append(result_obj)
         
         filename = filedialog.asksaveasfilename(
             defaultextension=".json",
             filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
-            title="Export Enigma Configuration"
+            title="Export Results",
+            initialfile="bombe_results.json"
         )
         
         if filename:

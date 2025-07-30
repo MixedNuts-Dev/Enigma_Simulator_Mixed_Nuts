@@ -128,7 +128,7 @@ void EnigmaMainWindow::setupUi() {
     auto* plugboardLayout = new QHBoxLayout();
     plugboardLayout->addWidget(new QLabel("Plugboard:"));
     plugboardEdit = new QLineEdit(this);
-    plugboardEdit->setPlaceholderText("例: AB CD EF (空欄でプラグボードなし)");
+    plugboardEdit->setPlaceholderText("例: AB CD EF (空欄でプラグボードなし、最大10組)");
     plugboardLayout->addWidget(plugboardEdit);
     mainLayout->addLayout(plugboardLayout);
     
@@ -420,12 +420,27 @@ void EnigmaMainWindow::onImportBombeResultClicked() {
     QStringList items;
     for (int i = 0; i < std::min(10, static_cast<int>(results.size())); ++i) {
         QJsonObject result = results[i].toObject();
-        QString item = QString("#%1: %2 (%3) - Score: %4, Match: %5%")
+        
+        // プラグボード情報を取得
+        QString plugboardStr = "なし";
+        if (result.contains("plugboard")) {
+            QJsonArray plugboardArray = result["plugboard"].toArray();
+            if (!plugboardArray.isEmpty()) {
+                QStringList pairs;
+                for (const auto& value : plugboardArray) {
+                    pairs << value.toString();
+                }
+                plugboardStr = pairs.join(" ");
+            }
+        }
+        
+        QString item = QString("#%1: %2 (%3) - Score: %4, Match: %5%, PB: %6")
             .arg(i + 1)
             .arg(result["position"].toString())
             .arg(result["rotors"].toString())
             .arg(result["score"].toDouble(), 0, 'f', 1)
-            .arg(result["matchRate"].toDouble() * 100, 0, 'f', 1);
+            .arg(result["matchRate"].toDouble() * 100, 0, 'f', 1)
+            .arg(plugboardStr);
         items << item;
     }
     

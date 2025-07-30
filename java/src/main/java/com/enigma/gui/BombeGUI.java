@@ -20,10 +20,8 @@ import com.google.gson.JsonArray;
 
 import java.io.*;
 import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.prefs.Preferences;
 
@@ -274,12 +272,25 @@ public class BombeGUI extends Application {
         candidatesList.getItems().clear();
         for (int i = 0; i < Math.min(50, results.size()); i++) {
             CandidateResult result = results.get(i);
-            String item = String.format("#%d: %s (%s) - Score: %.1f, Match: %.1f%%",
+            // プラグボード文字列を作成
+            StringBuilder pbStr = new StringBuilder();
+            if (result.plugboard != null && !result.plugboard.isEmpty()) {
+                for (Map.Entry<Character, Character> entry : result.plugboard.entrySet()) {
+                    if (entry.getKey() < entry.getValue()) {  // 重複を避ける
+                        if (pbStr.length() > 0) pbStr.append(" ");
+                        pbStr.append(entry.getKey()).append(entry.getValue());
+                    }
+                }
+            }
+            String plugboardStr = pbStr.length() > 0 ? pbStr.toString() : "なし";
+            
+            String item = String.format("#%d: %s (%s) - Score: %.1f, Match: %.1f%%, PB: %s",
                 i + 1,
                 result.getPositionString(),
                 result.getRotorString(),
                 result.score,
-                result.matchRate * 100
+                result.matchRate * 100,
+                plugboardStr
             );
             candidatesList.getItems().add(item);
         }
