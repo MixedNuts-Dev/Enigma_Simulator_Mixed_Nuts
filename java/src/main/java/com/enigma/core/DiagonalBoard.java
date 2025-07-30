@@ -36,6 +36,11 @@ public class DiagonalBoard {
     
     // 効率的な矛盾検出のための高速チェック
     public boolean hasContradiction(Map<Character, Character> wiring) {
+        // 入力が空の場合は矛盾なし
+        if (wiring.isEmpty()) {
+            return false;
+        }
+        
         // 接続をクリア
         for (Set<Character> conn : connections) {
             conn.clear();
@@ -43,8 +48,19 @@ public class DiagonalBoard {
         
         // 配線から接続グラフを構築
         for (Map.Entry<Character, Character> entry : wiring.entrySet()) {
+            // 文字の範囲チェック
+            if (entry.getKey() < 'A' || entry.getKey() > 'Z' || 
+                entry.getValue() < 'A' || entry.getValue() > 'Z') {
+                return true;  // 無効な文字
+            }
+            
             int from = entry.getKey() - 'A';
             int to = entry.getValue() - 'A';
+            
+            // インデックスの境界チェック
+            if (from < 0 || from >= 26 || to < 0 || to >= 26) {
+                return true;  // インデックスエラー
+            }
             
             // 双方向の接続を追加
             connections.get(from).add(entry.getValue());
@@ -107,13 +123,28 @@ public class DiagonalBoard {
             char current = entry.getValue();
             int steps = 1;
             
-            while (wiring.containsKey(current) && steps < 3) {
-                current = wiring.get(current);
-                steps++;
+            // 訪問済みをトラックして無限ループを防ぐ
+            Set<Character> visited = new HashSet<>();
+            visited.add(start);
+            visited.add(current);
+            
+            while (steps < 26) {  // 最大26文字まで
+                Character next = wiring.get(current);
+                if (next == null) {
+                    break;  // マッピングが見つからない場合は終了
+                }
                 
-                if (current == start && steps > 2) {
+                if (next == start && steps > 2) {
                     return true;  // 矛盾：3文字以上の循環
                 }
+                
+                if (visited.contains(next) && next != start) {
+                    break;  // 既に訪問済み（start以外）
+                }
+                
+                visited.add(next);
+                current = next;
+                steps++;
             }
         }
         
