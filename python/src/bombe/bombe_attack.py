@@ -150,6 +150,9 @@ class Bombe:
     
     def test_rotor_positions(self):
         """すべてのローター位置をテスト"""
+        # 処理開始時刻を記録
+        start_time = time.time()
+        
         self.log("=== Bombe Attack Started ===")
         self.log(f"Crib: {self.crib_text}")
         self.log(f"Cipher: {self.cipher_text}")
@@ -226,39 +229,59 @@ class Bombe:
         else:
             # CPU並列処理
             with ThreadPoolExecutor(max_workers=self.num_threads) as executor:
-                # タスクをサブミット
-                future_to_task = {}
-                for task in tasks:
-                    if self.stop_flag.is_set():
-                        break
-                    future = executor.submit(self.test_position_with_offset, task[1], task[0], task[2])
-                    future_to_task[future] = task
+                # タスクをバッチに分割して処理
+                batch_size = 1000  # バッチサイズ
                 
-                # 結果を収集
-                for future in as_completed(future_to_task):
+                for i in range(0, len(tasks), batch_size):
                     if self.stop_flag.is_set():
-                        executor.shutdown(wait=False)
                         break
                     
-                    tested += 1
+                    batch = tasks[i:i + batch_size]
+                    futures = []
                     
-                    # 進捗をログ（5000位置ごと）
-                    if tested % 5000 == 0:
-                        progress = (tested / total_positions) * 100
-                        self.log(f"Progress: {tested}/{total_positions} ({progress:.1f}%)")
-                        # CPU負荷チェック
-                        self._throttle_if_needed()
+                    # バッチ内のタスクをサブミット
+                    for task in batch:
+                        if self.stop_flag.is_set():
+                            break
+                        future = executor.submit(self.test_position_with_offset, task[1], task[0], task[2])
+                        futures.append(future)
                     
-                    try:
-                        result = future.result(timeout=0.1)
-                    except Exception as e:
-                        pass
+                    # バッチの結果を待つ
+                    for future in futures:
+                        if self.stop_flag.is_set():
+                            executor.shutdown(wait=False)
+                            break
+                        
+                        try:
+                            result = future.result(timeout=1.0)
+                            tested += 1
+                        except Exception as e:
+                            tested += 1
+                            pass
+                    
+                    # バッチごとに進捗を更新
+                    progress = (tested / total_positions) * 100
+                    self.log(f"Progress: {tested}/{total_positions} ({progress:.1f}%)")
+                    
+                    # CPU負荷チェック
+                    self._throttle_if_needed()
         
         # スコアでソート（降順）
         self.candidates_with_scores.sort(key=lambda x: x[0], reverse=True)
         
+        # 処理時間を計算
+        elapsed_time = time.time() - start_time
+        
         self.log(f"\nTested {tested} positions")
         self.log(f"Found {len(self.candidates_with_scores)} possible settings")
+        
+        # 処理時間を表示
+        if elapsed_time < 60:
+            self.log(f"Processing time: {elapsed_time:.2f} seconds")
+        else:
+            minutes = int(elapsed_time // 60)
+            seconds = elapsed_time % 60
+            self.log(f"Processing time: {minutes} minutes {seconds:.2f} seconds")
         
         # 上位10件を表示
         for i, (score, positions, rotors, plugboard, match_rate, num_pairs, offset) in enumerate(self.candidates_with_scores[:10]):

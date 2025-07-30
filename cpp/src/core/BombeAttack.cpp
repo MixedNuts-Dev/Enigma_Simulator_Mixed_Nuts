@@ -19,6 +19,7 @@
 #include <ctime>
 #include <mutex>
 #include <iomanip>
+#include <cmath>
 
 #ifdef _WIN32
 #define NOMINMAX  // Windowsのmin/maxマクロを無効化
@@ -115,6 +116,9 @@ std::vector<CandidateResult> BombeAttack::attack(
     int maxOffset = (std::max)(0, static_cast<int>(cipherText_.length() - cribText_.length() + 1));
     int totalTasks = 26 * 26 * 26 * rotorOrders.size() * maxOffset;
     
+    // 処理開始時刻を記録
+    auto startTime = std::chrono::high_resolution_clock::now();
+    
     if (progressCallback) {
         progressCallback("Starting Bombe attack...");
         progressCallback("Crib: " + cribText_);
@@ -185,9 +189,26 @@ std::vector<CandidateResult> BombeAttack::attack(
     // スコアで結果をソート
     std::sort(results_.begin(), results_.end());
     
+    // 処理時間を計算
+    auto endTime = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsedTime = endTime - startTime;
+    
     if (progressCallback) {
         progressCallback("Bombe attack completed. Found " + 
                         std::to_string(results_.size()) + " candidates.");
+        
+        // 処理時間を表示
+        if (elapsedTime.count() < 60.0) {
+            std::ostringstream oss;
+            oss << "Processing time: " << std::fixed << std::setprecision(2) << elapsedTime.count() << " seconds";
+            progressCallback(oss.str());
+        } else {
+            int minutes = static_cast<int>(elapsedTime.count() / 60.0);
+            double seconds = std::fmod(elapsedTime.count(), 60.0);
+            std::ostringstream oss;
+            oss << "Processing time: " << minutes << " minutes " << std::fixed << std::setprecision(2) << seconds << " seconds";
+            progressCallback(oss.str());
+        }
     }
     
     return results_;

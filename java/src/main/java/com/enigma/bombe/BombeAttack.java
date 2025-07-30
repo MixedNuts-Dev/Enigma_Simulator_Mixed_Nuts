@@ -98,6 +98,8 @@ public class BombeAttack {
     }
     
     public List<CandidateResult> attack(Consumer<String> progressCallback) {
+        long startTime = System.currentTimeMillis(); // 処理開始時刻を記録
+        
         // カスタムThreadFactoryで優先度を設定
         ThreadFactory threadFactory = new ThreadFactory() {
             private final AtomicInteger threadNumber = new AtomicInteger(1);
@@ -208,7 +210,19 @@ public class BombeAttack {
         // スコアで結果をソート
         Collections.sort(results);
         
+        // 処理時間を計算
+        long elapsedTime = System.currentTimeMillis() - startTime;
+        
         progressCallback.accept(String.format("Found %d candidates", results.size()));
+        
+        // 処理時間を表示
+        if (elapsedTime < 60000) {
+            progressCallback.accept(String.format("Processing time: %.2f seconds", elapsedTime / 1000.0));
+        } else {
+            long minutes = elapsedTime / 60000;
+            double seconds = (elapsedTime % 60000) / 1000.0;
+            progressCallback.accept(String.format("Processing time: %d minutes %.2f seconds", minutes, seconds));
+        }
         
         return results;
     }
