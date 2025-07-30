@@ -50,7 +50,7 @@ public class EnigmaGUI extends Application {
             plugboardField = new TextField()
         );
         plugboardField.setPrefWidth(300);
-        plugboardField.setPromptText("例: AB CD EF (空欄でプラグボードなし)");
+        plugboardField.setPromptText("例: AB CD EF (空欄でプラグボードなし、最大10組)");
         
         // Message input
         messageArea = new TextArea();
@@ -419,8 +419,23 @@ public class EnigmaGUI extends Application {
                     String rotors = result.get("rotors").getAsString();
                     double score = result.get("score").getAsDouble();
                     double matchRate = result.get("matchRate").getAsDouble();
-                    choices.add(String.format("#%d: %s (%s) - Score: %.1f, Match: %.1f%%", 
-                        i + 1, position, rotors, score, matchRate * 100));
+                    
+                    // プラグボード情報を取得
+                    String plugboardStr = "なし";
+                    if (result.has("plugboard")) {
+                        JsonArray plugboardArray = result.getAsJsonArray("plugboard");
+                        if (plugboardArray != null && plugboardArray.size() > 0) {
+                            StringBuilder pb = new StringBuilder();
+                            for (int j = 0; j < plugboardArray.size(); j++) {
+                                if (j > 0) pb.append(" ");
+                                pb.append(plugboardArray.get(j).getAsString());
+                            }
+                            plugboardStr = pb.toString();
+                        }
+                    }
+                    
+                    choices.add(String.format("#%d: %s (%s) - Score: %.1f, Match: %.1f%%, PB: %s", 
+                        i + 1, position, rotors, score, matchRate * 100, plugboardStr));
                 }
                 
                 ChoiceDialog<String> dialog = new ChoiceDialog<>(choices.get(0), choices);

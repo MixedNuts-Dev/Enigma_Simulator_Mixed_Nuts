@@ -5,7 +5,6 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
 import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean;
 
@@ -27,7 +26,6 @@ public class BombeAttack {
     private final int maxThreads;
     private volatile long threadDelay = 0; // ミリ秒単位の遅延
     private final AtomicLong lastCpuCheck = new AtomicLong(0);
-    private volatile double cpuThreshold = 85.0;
     
     // GPU処理
     private boolean useGPU = false;
@@ -379,14 +377,21 @@ public class BombeAttack {
                 // 有効なステッカー設定が見つかった
                 Map<Character, Character> testWiring = new HashMap<>();
                 Set<Character> used = new HashSet<>();
+                int pairCount = 0;
                 
                 for (Map.Entry<Character, Character> entry : deducedSteckers.entrySet()) {
                     if (!used.contains(entry.getKey()) && !used.contains(entry.getValue()) && 
                         !entry.getKey().equals(entry.getValue())) {
+                        // 最大10組の制限をチェック
+                        if (pairCount >= 10) {
+                            break;
+                        }
+                        
                         testWiring.put(entry.getKey(), entry.getValue());
                         testWiring.put(entry.getValue(), entry.getKey());
                         used.add(entry.getKey());
                         used.add(entry.getValue());
+                        pairCount++;
                     }
                 }
                 
@@ -588,12 +593,17 @@ public class BombeAttack {
             }
         }
         
-        // 含意されたステッカーを追加
+        // 含意されたステッカーを追加（最大10組の制限を考慮）
+        int currentPairs = deducedSteckers.size() / 2;  // 各ペアは2つのエントリを持つ
         for (Map.Entry<Character, Character> impl : implications) {
+            if (currentPairs >= 10) {
+                break;  // 10組の制限に達した
+            }
             if (!deducedSteckers.containsKey(impl.getKey()) && 
                 !deducedSteckers.containsKey(impl.getValue())) {
                 deducedSteckers.put(impl.getKey(), impl.getValue());
                 deducedSteckers.put(impl.getValue(), impl.getKey());
+                currentPairs++;
             }
         }
         

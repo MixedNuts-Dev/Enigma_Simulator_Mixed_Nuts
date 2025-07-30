@@ -110,7 +110,7 @@ class EnigmaGUI:
         plugboard_frame = tk.Frame(self.master)
         plugboard_frame.pack(pady=5)
         
-        tk.Label(plugboard_frame, text="Plugboard connections (e.g., AB CD EF):").pack(side="left", padx=5)
+        tk.Label(plugboard_frame, text="プラグボード接続（例: AB CD EF）最大10組:").pack(side="left", padx=5)
         
         self.plugboard_var = tk.StringVar()
         self.entry_plugboard = tk.Entry(plugboard_frame, textvariable=self.plugboard_var, width=30)
@@ -242,7 +242,17 @@ class EnigmaGUI:
         for pair in pairs:
             if len(pair) == 2:
                 connections.append((pair[0], pair[1]))
-        plugboard = Plugboard(connections)
+        
+        # プラグボード接続数のチェック
+        if len(connections) > 10:
+            messagebox.showerror("Error", f"プラグボード接続数は最大10組までです。\n現在{len(connections)}組が指定されています。")
+            raise ValueError(f"プラグボード接続数は最大10組までです。")
+        
+        try:
+            plugboard = Plugboard(connections)
+        except ValueError as e:
+            messagebox.showerror("Error", str(e))
+            raise
         
         # エニグママシンを再構成
         self.enigma.rotors = rotors
@@ -340,7 +350,7 @@ class EnigmaGUI:
             print(f"設定の読み込みでエラー: {str(e)}")
     
     def import_bombe_result(self):
-        """Bombeの結果をインポート"""
+        """Bombeの結果をインポート（Java版準拠）"""
         filename = filedialog.askopenfilename(
             filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
             title="Import Bombe Result"
@@ -351,44 +361,84 @@ class EnigmaGUI:
                 with open(filename, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                 
-                # Bombeの結果ファイルかチェック
+                # Java版形式のBombeの結果ファイルかチェック
                 if 'results' not in data or 'settings' not in data:
                     messagebox.showerror("エラー", "これはBombeの結果ファイルではありません")
                     return
                 
                 results = data['results']
+                settings = data['settings']
+                
                 if not results:
                     messagebox.showerror("エラー", "結果が見つかりません")
                     return
                 
-                # 結果選択ダイアログを表示
-                result_strings = []
-                for i, result in enumerate(results):
-                    result_str = f"Result {i+1}: "
-                    result_str += f"Rotors: {result['rotors'][0]['type']}, {result['rotors'][1]['type']}, {result['rotors'][2]['type']} "
-                    result_str += f"Positions: {result['rotors'][0]['position']}, {result['rotors'][1]['position']}, {result['rotors'][2]['position']}"
-                    result_strings.append(result_str)
-                
                 # 選択ダイアログ
                 selection_window = tk.Toplevel(self.master)
-                selection_window.title("Select Bombe Result")
-                selection_window.geometry("600x400")
+                selection_window.title("Select Result")
+                selection_window.geometry("700x400")
                 
-                tk.Label(selection_window, text="Select a result to import:").pack(pady=10)
+                tk.Label(selection_window, text="Bombeの攻撃結果を選択してください:", 
+                        font=("Arial", 12)).pack(pady=10)
                 
-                listbox = tk.Listbox(selection_window, width=80, height=15)
-                listbox.pack(pady=10)
+                # リストボックス
+                listbox = tk.Listbox(selection_window, width=80, height=15, font=("Courier", 10))
+                listbox.pack(pady=10, padx=20, fill=tk.BOTH, expand=True)
                 
-                for result_str in result_strings:
-                    listbox.insert(tk.END, result_str)
+                # 結果をリストボックスに追加（最大10件）
+                for i, result in enumerate(results[:10]):
+                    position = result.get("position", "???")
+                    rotors = result.get("rotors", "?-?-?")
+                    score = result.get("score", 0)
+                    match_rate = result.get("matchRate", 0)
+                    plugboard = result.get("plugboard", [])
+                    plugboard_str = ' '.join(plugboard) if plugboard else 'なし'
+                    text = f"#{i+1}: {position} ({rotors}) - Score: {score:.1f}, Match: {match_rate:.1%}, PB: {plugboard_str}"
+                    listbox.insert(tk.END, text)
+                
+                if listbox.size() > 0:
+                    listbox.selection_set(0)  # デフォルトで最初を選択
                 
                 def on_select():
                     selection = listbox.curselection()
-                    if selection:
-                        selected_result = results[selection[0]]
-                        self.load_config_from_dict(selected_result)
-                        selection_window.destroy()
-                        messagebox.showinfo("成功", "Bombeの結果をインポートしました")
+                    if not selection:
+                        messagebox.showwarning("警告", "結果を選択してください")
+                        return
+                    
+                    # 選択された結果を適用
+                    selected_result = results[selection[0]]
+                    position = selected_result["position"]
+                    rotor_config = selected_result["rotors"]
+                    rotors = rotor_config.split("-")
+                    
+                    # 設定を適用
+                    if len(rotors) >= 3:
+                        self.rotor_type_vars[0].set(rotors[0])
+                        self.rotor_type_vars[1].set(rotors[1])
+                        self.rotor_type_vars[2].set(rotors[2])
+                    
+                    # 位置を設定
+                    if len(position) >= 3:
+                        self.rotor_pos_vars[0].set(position[0])
+                        self.rotor_pos_vars[1].set(position[1])
+                        self.rotor_pos_vars[2].set(position[2])
+                    
+                    # リフレクターを設定
+                    if settings.get("reflector"):
+                        self.reflector_var.set(settings["reflector"])
+                    
+                    # プラグボードを設定
+                    plugboard = selected_result.get("plugboard", [])
+                    if plugboard:
+                        self.plugboard_var.set(" ".join(plugboard))
+                    else:
+                        self.plugboard_var.set("")
+                    
+                    selection_window.destroy()
+                    messagebox.showinfo("成功", 
+                        f"Bombeの結果をインポートしました\n" +
+                        f"Position: {position}\n" +
+                        f"Rotors: {rotor_config}")
                 
                 tk.Button(selection_window, text="Select", command=on_select).pack(pady=10)
                 

@@ -402,7 +402,7 @@ void BombeWindow::showResults(const std::vector<BombeResult>& results) {
     resultsList->clear();
     for (size_t i = 0; i < std::min(size_t(50), results.size()); ++i) {
         const auto& result = results[i];
-        QString plugboardStr = "None";
+        QString plugboardStr = "なし";
         if (!result.plugboard.empty()) {
             QStringList pairs;
             for (const auto& [a, b] : result.plugboard) {
@@ -411,7 +411,7 @@ void BombeWindow::showResults(const std::vector<BombeResult>& results) {
             plugboardStr = pairs.join(" ");
         }
         
-        QString item = QString("#%1: %2 (%3) - Score: %4, Match: %5%, Plugboard: %6, Offset: %7")
+        QString item = QString("#%1: %2 (%3) - Score: %4, Match: %5%, PB: %6, Offset: %7")
             .arg(i + 1)
             .arg(QString::fromStdString(result.getPositionString()))
             .arg(QString::fromStdString(result.getRotorString()))

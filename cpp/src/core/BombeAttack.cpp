@@ -383,6 +383,11 @@ std::vector<std::pair<char, char>> BombeAttack::deducePlugboardWiring(
             if (used.find(pair.first) == used.end() && 
                 used.find(pair.second) == used.end() &&
                 pair.first != pair.second) {
+                // 最大10組の制限をチェック
+                if (plugboardPairs.size() >= 10) {
+                    break;
+                }
+                
                 if (pair.first < pair.second) {
                     plugboardPairs.push_back({pair.first, pair.second});
                 } else {
