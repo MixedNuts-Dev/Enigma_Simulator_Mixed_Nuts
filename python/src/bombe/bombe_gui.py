@@ -236,9 +236,9 @@ class BombeGUI:
         test_all_orders = self.test_all_orders_var.get()
         search_without_plugboard = self.search_without_plugboard_var.get()
         
-        # Bombeインスタンスを作成
+        # Bombeインスタンスを作成（常に最適化版を使用）
         self.bombe = Bombe(crib, cipher, rotor_types, reflector_type, self.log_queue, 
-                          test_all_orders, search_without_plugboard)
+                          test_all_orders, search_without_plugboard, use_optimized=True)
         
         # 別スレッドで実行
         self.bombe_thread = threading.Thread(target=self.run_attack)

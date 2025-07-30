@@ -1,6 +1,8 @@
 """Rotor component for the Enigma machine."""
 
 import string
+import numpy as np
+from numba import njit
 
 
 class Rotor:
@@ -53,3 +55,44 @@ class Rotor:
         decrypted_idx = self.mapping.index(string.ascii_uppercase[idx])
         decrypted_idx = (decrypted_idx - self.position + self.ring_setting) % 26
         return string.ascii_uppercase[decrypted_idx]
+    
+    # 最適化版メソッド（NumPy使用）
+    def get_mapping_arrays(self):
+        """Get numerical mapping arrays for optimization."""
+        # Forward mapping
+        mapping_forward = np.array([ord(c) - ord('A') for c in self.mapping], dtype=np.int32)
+        
+        # Backward mapping
+        mapping_backward = np.zeros(26, dtype=np.int32)
+        for i in range(26):
+            mapping_backward[mapping_forward[i]] = i
+        
+        return mapping_forward, mapping_backward
+    
+    def encrypt_forward_idx(self, char_idx):
+        """Forward encryption using numerical index (0-25)."""
+        idx = (char_idx + self.position - self.ring_setting) % 26
+        encrypted_idx = ord(self.mapping[idx]) - ord('A')
+        return (encrypted_idx - self.position + self.ring_setting) % 26
+    
+    def encrypt_backward_idx(self, char_idx):
+        """Backward encryption using numerical index (0-25)."""
+        idx = (char_idx + self.position - self.ring_setting) % 26
+        decrypted_idx = self.mapping.index(string.ascii_uppercase[idx])
+        return (decrypted_idx - self.position + self.ring_setting) % 26
+
+
+@njit
+def fast_rotor_encrypt_forward(char_idx, position, ring_setting, mapping_forward):
+    """JIT-compiled forward rotor encryption."""
+    idx = (char_idx + position - ring_setting) % 26
+    encrypted_idx = mapping_forward[idx]
+    return (encrypted_idx - position + ring_setting) % 26
+
+
+@njit
+def fast_rotor_encrypt_backward(char_idx, position, ring_setting, mapping_backward):
+    """JIT-compiled backward rotor encryption."""
+    idx = (char_idx + position - ring_setting) % 26
+    decrypted_idx = mapping_backward[idx]
+    return (decrypted_idx - position + ring_setting) % 26
