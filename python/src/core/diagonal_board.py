@@ -22,14 +22,26 @@ class DiagonalBoard:
     
     def has_contradiction(self, wiring):
         """効率的な矛盾検出"""
+        # 入力が空の場合は矛盾なし
+        if not wiring:
+            return False
+        
         # 接続をクリア
         for conn in self.connections:
             conn.clear()
         
         # 配線から接続グラフを構築
         for from_char, to_char in wiring.items():
+            # 文字の範囲チェック
+            if not ('A' <= from_char <= 'Z') or not ('A' <= to_char <= 'Z'):
+                return True  # 無効な文字
+            
             from_idx = ord(from_char) - ord('A')
             to_idx = ord(to_char) - ord('A')
+            
+            # インデックスの境界チェック
+            if not (0 <= from_idx < 26) or not (0 <= to_idx < 26):
+                return True  # インデックスエラー
             
             # 双方向接続を追加
             self.connections[from_idx].add(to_char)
@@ -92,11 +104,22 @@ class DiagonalBoard:
             current = wiring.get(start_char)
             steps = 1
             
-            while current and current in wiring and steps < 3:
-                current = wiring[current]
-                steps += 1
+            # 訪問済みをトラックして無限ループを防ぐ
+            visited = {start_char, current}
+            
+            while steps < 26:  # 最大26文字まで
+                next_char = wiring.get(current)
+                if next_char is None:
+                    break  # マッピングが見つからない場合は終了
                 
-                if current == start_char and steps > 2:
+                if next_char == start_char and steps > 2:
                     return True  # 矛盾: 3文字以上のサイクル
+                
+                if next_char in visited and next_char != start_char:
+                    break  # 既に訪問済み（start以外）
+                
+                visited.add(next_char)
+                current = next_char
+                steps += 1
         
         return False  # 矛盾なし
